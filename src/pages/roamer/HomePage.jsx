@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Mountain, Footprints, Bike, Waves, Ship, Car, Play, Users, CheckCircle } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { useSessionCtx } from '../../lib/SessionContext'
 import Logo from '../../components/Logo'
 import Avatar from '../../components/Avatar'
 
@@ -31,7 +32,7 @@ function StatCard({ value, unit, label }) {
   )
 }
 
-function ActiveTripCard({ trip, onStartSession }) {
+function ActiveTripCard({ trip, onStartSession, starting }) {
   const AdventureIcon = ADVENTURE_ICONS[trip.adventure_type] || Mountain
 
   return (
@@ -59,12 +60,15 @@ function ActiveTripCard({ trip, onStartSession }) {
 
       <button
         onClick={() => onStartSession(trip.id)}
-        className="w-full bg-brand-teal rounded-sm py-3 flex items-center gap-3 px-4"
+        disabled={starting}
+        className="w-full bg-brand-teal rounded-sm py-3 flex items-center gap-3 px-4 disabled:opacity-50"
       >
         <div className="w-8 h-8 rounded-full bg-brand-teal-dark flex items-center justify-center flex-shrink-0">
           <Play size={14} className="text-white" fill="white" />
         </div>
-        <span className="text-[15px] font-bold text-white">Start today's session</span>
+        <span className="text-[15px] font-bold text-white">
+          {starting ? 'Starting…' : "Start today's session"}
+        </span>
       </button>
     </div>
   )
@@ -95,8 +99,10 @@ function PastTripCard({ trip }) {
 export default function HomePage() {
   const { user, profile } = useAuth()
   const navigate = useNavigate()
+  const { session, startSession } = useSessionCtx()
   const [trips, setTrips] = useState({ active: null, past: [] })
   const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -131,8 +137,20 @@ export default function HomePage() {
     setLoading(false)
   }
 
-  function handleStartSession(tripId) {
-    navigate(`/session/${tripId}`)
+  async function handleStartSession(tripId) {
+    // Already have an active session for this trip — just go straight to it
+    if (session?.tripId === tripId) {
+      navigate(`/session/${tripId}`)
+      return
+    }
+    setStarting(true)
+    try {
+      await startSession(tripId)
+      navigate(`/session/${tripId}`)
+    } catch (e) {
+      console.error(e)
+      setStarting(false)
+    }
   }
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Roamer'
@@ -162,7 +180,7 @@ export default function HomePage() {
           <>
             {/* Active trip */}
             {trips.active ? (
-              <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} />
+              <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} starting={starting} />
             ) : (
               <div className="bg-surface border border-border rounded-xl p-6 text-center">
                 <p className="text-text-muted text-sm mb-1">No active trip</p>
