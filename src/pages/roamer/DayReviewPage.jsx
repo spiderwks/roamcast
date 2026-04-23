@@ -9,7 +9,6 @@ const MOMENT_COLORS = {
   video: { border: 'border-moment-video', bg: 'bg-[#001a10]', text: 'text-moment-video', label: 'Video' },
   audio: { border: 'border-moment-audio', bg: 'bg-[#110d24]', text: 'text-moment-audio', label: 'Audio' },
 }
-
 const TYPE_ICONS = { photo: Camera, video: Video, audio: Mic }
 
 function formatDuration(secs) {
@@ -24,9 +23,29 @@ function formatDate(dateStr) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date(dateStr + 'T12:00:00'))
 }
 
+function formatTime(isoStr) {
+  if (!isoStr) return '—'
+  return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 function getPublicUrl(path) {
   if (!path) return null
   return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+}
+
+async function fetchSnappedRoute(pts) {
+  if (pts.length < 2) return null
+  try {
+    const token = import.meta.env.VITE_MAPBOX_TOKEN
+    const coords = pts.slice(0, 25).map(p => `${p.lng},${p.lat}`).join(';')
+    const res = await fetch(
+      `https://api.mapbox.com/directions/v5/mapbox/walking/${coords}?geometries=geojson&overview=full&access_token=${token}`
+    )
+    const data = await res.json()
+    return data.routes?.[0]?.geometry ?? null
+  } catch {
+    return null
+  }
 }
 
 export default function DayReviewPage() {
@@ -35,6 +54,7 @@ export default function DayReviewPage() {
   const [day, setDay] = useState(null)
   const [moments, setMoments] = useState([])
   const [pathPoints, setPathPoints] = useState([])
+  const [snappedRoute, setSnappedRoute] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedMoment, setSelectedMoment] = useState(null)
   const [mapOpen, setMapOpen] = useState(false)
@@ -44,23 +64,26 @@ export default function DayReviewPage() {
   async function loadData() {
     setLoading(true)
     const [{ data: dayData }, { data: momentsData }, { data: trackData }] = await Promise.all([
-      supabase.from('days').select('id, day_number, date, duration_seconds, distance_miles').eq('id', dayId).single(),
+      supabase.from('days')
+        .select('id, day_number, date, duration_seconds, distance_miles, session_start, session_end')
+        .eq('id', dayId).single(),
       supabase.from('moments').select('*').eq('day_id', dayId).order('captured_at', { ascending: true }),
       supabase.from('gps_tracks').select('points').eq('day_id', dayId).maybeSingle(),
     ])
 
     if (dayData) setDay(dayData)
-
     const moms = momentsData ?? []
     setMoments(moms)
 
-    if (trackData?.points?.length) {
-      setPathPoints(trackData.points)
-    } else {
-      setPathPoints(moms.filter(m => m.lat && m.lng).map(m => ({ lat: m.lat, lng: m.lng })))
-    }
-
+    const pts = trackData?.points?.length
+      ? trackData.points
+      : moms.filter(m => m.lat && m.lng).map(m => ({ lat: m.lat, lng: m.lng }))
+    setPathPoints(pts)
     setLoading(false)
+
+    // Fetch road-snapped route in background — falls back to straight lines on error
+    const route = await fetchSnappedRoute(pts)
+    if (route) setSnappedRoute(route)
   }
 
   function handleMomentDotClick(momentId) {
@@ -88,6 +111,11 @@ export default function DayReviewPage() {
         <div className="flex-1 min-w-0">
           <p className="text-[9px] font-medium text-brand-teal uppercase tracking-widest">Day {day?.day_number}</p>
           <h1 className="text-[15px] font-bold text-white">{formatDate(day?.date)}</h1>
+          {(day?.session_start) && (
+            <p className="text-[10px] text-text-muted mt-0.5">
+              {formatTime(day.session_start)}{day.session_end ? ` – ${formatTime(day.session_end)}` : ''}
+            </p>
+          )}
         </div>
       </div>
 
@@ -108,10 +136,32 @@ export default function DayReviewPage() {
         ))}
       </div>
 
+      {/* Map — legend */}
+      <div className="px-4 mb-1 flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-brand-teal border-2 border-white" />
+          <span className="text-[9px] text-text-muted">Start</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white" />
+          <span className="text-[9px] text-text-muted">End</span>
+        </div>
+        {!snappedRoute && pathPoints.length > 1 && (
+          <span className="text-[9px] text-text-disabled ml-auto">Snapping to roads…</span>
+        )}
+      </div>
+
       {/* Map */}
       <div className="px-4 mb-4">
         <div className="relative">
-          <MiniMap points={pathPoints} moments={moments} className="h-[150px]" onMomentClick={handleMomentDotClick} />
+          <MiniMap
+            points={pathPoints}
+            moments={moments}
+            className="h-[160px]"
+            onMomentClick={handleMomentDotClick}
+            routeGeometry={snappedRoute}
+            showStartStop
+          />
           <button
             onClick={() => setMapOpen(true)}
             className="absolute bottom-2 right-2 bg-surface-deep/80 border border-border rounded-full px-2.5 py-1"
@@ -148,8 +198,9 @@ export default function DayReviewPage() {
                       <span className={`text-[8px] font-medium ${c.text}`}>{c.label}</span>
                     </div>
                   )}
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-1">
-                    <p className="text-[8px] text-white truncate">{m.title}</p>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1.5 py-1">
+                    <p className="text-[8px] text-white truncate leading-tight">{m.title}</p>
+                    <p className="text-[7px] text-white/60">{formatTime(m.captured_at)}</p>
                   </div>
                 </button>
               )
@@ -161,14 +212,32 @@ export default function DayReviewPage() {
       {/* Fullscreen map overlay */}
       {mapOpen && (
         <div className="fixed inset-0 z-50 bg-surface-deep flex flex-col">
-          <div className="flex items-center gap-3 px-4 pt-5 pb-3 flex-shrink-0">
+          <div className="flex items-center gap-3 px-4 pt-5 pb-2 flex-shrink-0">
             <button onClick={() => setMapOpen(false)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center">
               <X size={16} className="text-text-secondary" />
             </button>
             <h2 className="text-[15px] font-bold text-white flex-1">Day {day?.day_number} · GPS Track</h2>
           </div>
+          <div className="flex items-center gap-3 px-4 pb-2 flex-shrink-0">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-brand-teal border-2 border-white" />
+              <span className="text-[9px] text-text-muted">Start</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white" />
+              <span className="text-[9px] text-text-muted">End</span>
+            </div>
+          </div>
           <div className="flex-1 px-4 pb-6">
-            <MiniMap points={pathPoints} moments={moments} className="h-full" interactive onMomentClick={handleMomentDotClick} />
+            <MiniMap
+              points={pathPoints}
+              moments={moments}
+              className="h-full"
+              interactive
+              onMomentClick={handleMomentDotClick}
+              routeGeometry={snappedRoute}
+              showStartStop
+            />
           </div>
         </div>
       )}
@@ -197,7 +266,9 @@ export default function DayReviewPage() {
               <div className="flex items-start justify-between gap-3 mb-1">
                 <div>
                   <p className="text-[15px] font-bold text-white">{selectedMoment.title}</p>
-                  <p className="text-[10px] text-text-muted capitalize mt-0.5">{selectedMoment.type}</p>
+                  <p className="text-[10px] text-text-muted capitalize mt-0.5">
+                    {selectedMoment.type} · {formatTime(selectedMoment.captured_at)}
+                  </p>
                 </div>
                 <button onClick={() => setSelectedMoment(null)} className="w-7 h-7 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
                   <X size={14} className="text-text-secondary" />

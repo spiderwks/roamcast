@@ -5,118 +5,155 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const MOMENT_COLORS = { photo: '#BA7517', video: '#1D9E75', audio: '#7F77DD' }
+const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
-export default function MiniMap({ points = [], moments = [], className = '', interactive = false, onMomentClick }) {
+export default function MiniMap({
+  points = [],
+  moments = [],
+  className = '',
+  interactive = false,
+  onMomentClick,
+  routeGeometry = null,  // GeoJSON LineString geometry from Directions API
+  showStartStop = false, // show teal start + red end markers
+}) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const onMomentClickRef = useRef(onMomentClick)
+
+  // Refs hold latest prop values so the async map.on('load') handler always sees fresh data
+  const latestPointsRef = useRef(points)
+  const latestMomentsRef = useRef(moments)
+  const latestRouteRef = useRef(routeGeometry)
+
   useEffect(() => { onMomentClickRef.current = onMomentClick }, [onMomentClick])
+  useEffect(() => { latestPointsRef.current = points }, [points])
+  useEffect(() => { latestMomentsRef.current = moments }, [moments])
+  useEffect(() => { latestRouteRef.current = routeGeometry }, [routeGeometry])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    const container = containerRef.current
 
-    const center = points.length > 0
-      ? [points[points.length - 1].lng, points[points.length - 1].lat]
-      : [-98.5795, 39.8283]
-
-    mapRef.current = new mapboxgl.Map({
-      container: containerRef.current,
+    const map = new mapboxgl.Map({
+      container,
       style: 'mapbox://styles/mapbox/dark-v11',
-      center,
-      zoom: points.length > 0 ? 14 : 3,
+      center: [-98.5795, 39.8283],
+      zoom: 3,
       interactive,
       attributionControl: false,
     })
+    mapRef.current = map
 
-    mapRef.current.on('load', () => {
-      const map = mapRef.current
+    map.on('load', () => {
+      const pts = latestPointsRef.current
+      const moms = latestMomentsRef.current
+      const route = latestRouteRef.current
 
-      // GPS path source
-      map.addSource('path', {
-        type: 'geojson',
-        data: buildLineGeoJSON(points),
-      })
-      map.addLayer({
-        id: 'path-line',
-        type: 'line',
-        source: 'path',
-        paint: { 'line-color': '#1D9E75', 'line-width': 2 },
-      })
+      // Fit viewport to points
+      if (pts.length === 1) {
+        map.setCenter([pts[0].lng, pts[0].lat])
+        map.setZoom(14)
+      } else if (pts.length > 1) {
+        const bounds = pts.reduce(
+          (b, p) => b.extend([p.lng, p.lat]),
+          new mapboxgl.LngLatBounds([pts[0].lng, pts[0].lat], [pts[0].lng, pts[0].lat])
+        )
+        map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 })
+      }
 
-      // Moment dots source
-      map.addSource('moments', {
-        type: 'geojson',
-        data: buildMomentsGeoJSON(moments),
-      })
+      // Path line (road-snapped route if available, otherwise straight)
+      const pathData = route ? { type: 'Feature', geometry: route } : buildLineGeoJSON(pts)
+      map.addSource('path', { type: 'geojson', data: pathData })
+      map.addLayer({ id: 'path-line', type: 'line', source: 'path', paint: { 'line-color': '#1D9E75', 'line-width': 2.5 } })
+
+      // Moment dots
+      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
       map.addLayer({
         id: 'moment-dots',
         type: 'circle',
         source: 'moments',
         paint: {
-          'circle-radius': 5,
+          'circle-radius': 6,
           'circle-color': ['get', 'color'],
-          'circle-stroke-width': 1,
+          'circle-stroke-width': 1.5,
           'circle-stroke-color': '#0f0f0f',
         },
       })
 
-      // Moment dot click handler
-      map.on('click', 'moment-dots', (e) => {
-        const momentId = e.features?.[0]?.properties?.momentId
-        if (momentId) onMomentClickRef.current?.(momentId)
-      })
-      map.on('mouseenter', 'moment-dots', () => { map.getCanvas().style.cursor = 'pointer' })
-      map.on('mouseleave', 'moment-dots', () => { map.getCanvas().style.cursor = '' })
+      if (showStartStop) {
+        // Teal start marker
+        map.addSource('start-pos', { type: 'geojson', data: pts.length > 0 ? ptFeature(pts[0]) : EMPTY_FC })
+        map.addLayer({ id: 'start-outer', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 9, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
+        map.addLayer({ id: 'start-inner', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 3.5, 'circle-color': '#fff' } })
 
-      // Current position dot
-      if (points.length > 0) {
-        const last = points[points.length - 1]
-        map.addSource('position', {
-          type: 'geojson',
-          data: { type: 'Feature', geometry: { type: 'Point', coordinates: [last.lng, last.lat] } },
-        })
+        // Red end marker
+        map.addSource('end-pos', { type: 'geojson', data: pts.length > 1 ? ptFeature(pts[pts.length - 1]) : EMPTY_FC })
+        map.addLayer({ id: 'end-outer', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 9, 'circle-color': '#EF4444', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
+        map.addLayer({ id: 'end-inner', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 3.5, 'circle-color': '#fff' } })
+      } else {
+        // Live session: current position dot
+        const last = pts.length > 0 ? pts[pts.length - 1] : null
+        map.addSource('position', { type: 'geojson', data: last ? ptFeature(last) : EMPTY_FC })
         map.addLayer({
           id: 'position-dot',
           type: 'circle',
           source: 'position',
-          paint: {
-            'circle-radius': 6,
-            'circle-color': '#1D9E75',
-            'circle-opacity': 1,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': '#ffffff',
-          },
+          paint: { 'circle-radius': 6, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
         })
       }
     })
 
+    // DOM click + queryRenderedFeatures: works regardless of interactive setting
+    const handleClick = (e) => {
+      if (!onMomentClickRef.current || !map.isStyleLoaded()) return
+      const rect = container.getBoundingClientRect()
+      const pt = new mapboxgl.Point(e.clientX - rect.left, e.clientY - rect.top)
+      const features = map.queryRenderedFeatures(pt, { layers: ['moment-dots'] })
+      const momentId = features[0]?.properties?.momentId
+      if (momentId) onMomentClickRef.current(momentId)
+    }
+    const handleMouseMove = (e) => {
+      if (!map.isStyleLoaded()) return
+      const rect = container.getBoundingClientRect()
+      const pt = new mapboxgl.Point(e.clientX - rect.left, e.clientY - rect.top)
+      const features = map.queryRenderedFeatures(pt, { layers: ['moment-dots'] })
+      container.style.cursor = features.length > 0 ? 'pointer' : ''
+    }
+    container.addEventListener('click', handleClick)
+    container.addEventListener('mousemove', handleMouseMove)
+
     return () => {
+      container.removeEventListener('click', handleClick)
+      container.removeEventListener('mousemove', handleMouseMove)
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
     }
   }, [])
 
-  // Update path and position as new GPS points arrive
+  // Update path + markers when points or snapped route changes
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded() || points.length === 0) return
+    if (!map || !map.isStyleLoaded()) return
 
-    const pathSource = map.getSource('path')
-    if (pathSource) pathSource.setData(buildLineGeoJSON(points))
+    const pathData = routeGeometry
+      ? { type: 'Feature', geometry: routeGeometry }
+      : buildLineGeoJSON(points)
+    map.getSource('path')?.setData(pathData)
 
-    const last = points[points.length - 1]
-    const posSource = map.getSource('position')
-    if (posSource) {
-      posSource.setData({ type: 'Feature', geometry: { type: 'Point', coordinates: [last.lng, last.lat] } })
+    if (showStartStop) {
+      if (points.length > 0) map.getSource('start-pos')?.setData(ptFeature(points[0]))
+      if (points.length > 1) map.getSource('end-pos')?.setData(ptFeature(points[points.length - 1]))
+    } else if (points.length > 0) {
+      const last = points[points.length - 1]
+      map.getSource('position')?.setData(ptFeature(last))
+      map.easeTo({ center: [last.lng, last.lat], duration: 800 })
     }
-    map.easeTo({ center: [last.lng, last.lat], duration: 800 })
-  }, [points])
+  }, [points, routeGeometry])
 
   // Update moment dots
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-    const src = map.getSource('moments')
-    if (src) src.setData(buildMomentsGeoJSON(moments))
+    map.getSource('moments')?.setData(buildMomentsGeoJSON(moments))
   }, [moments])
 
   return (
@@ -128,13 +165,14 @@ export default function MiniMap({ points = [], moments = [], className = '', int
   )
 }
 
+function ptFeature(p) {
+  return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }
+}
+
 function buildLineGeoJSON(points) {
   return {
     type: 'Feature',
-    geometry: {
-      type: 'LineString',
-      coordinates: points.map(p => [p.lng, p.lat]),
-    },
+    geometry: { type: 'LineString', coordinates: points.map(p => [p.lng, p.lat]) },
   }
 }
 

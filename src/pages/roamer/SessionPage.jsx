@@ -287,7 +287,9 @@ export default function SessionPage() {
 
             <div className="flex items-center justify-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-pulse" />
-              <span className="text-[10px] text-text-muted">Session active · {formatElapsed(elapsed)}</span>
+              <span className="text-[10px] text-text-muted">
+                Started {new Date(session.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} · {formatElapsed(elapsed)}
+              </span>
             </div>
           </>
         )}

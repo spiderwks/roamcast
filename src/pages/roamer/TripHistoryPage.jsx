@@ -15,6 +15,11 @@ function formatDate(dateStr) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(dateStr + 'T12:00:00'))
 }
 
+function formatTime(isoStr) {
+  if (!isoStr) return null
+  return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
 export default function TripHistoryPage() {
   const { tripId } = useParams()
   const navigate = useNavigate()
@@ -29,7 +34,7 @@ export default function TripHistoryPage() {
     const [{ data: trip }, { data: daysData }] = await Promise.all([
       supabase.from('trips').select('name').eq('id', tripId).single(),
       supabase.from('days')
-        .select('id, day_number, date, duration_seconds, distance_miles')
+        .select('id, day_number, date, duration_seconds, distance_miles, session_start, session_end')
         .eq('trip_id', tripId)
         .eq('upload_status', 'complete')
         .order('day_number', { ascending: false }),
@@ -39,10 +44,7 @@ export default function TripHistoryPage() {
 
     if (daysData?.length) {
       const dayIds = daysData.map(d => d.id)
-      const { data: moments } = await supabase
-        .from('moments')
-        .select('day_id')
-        .in('day_id', dayIds)
+      const { data: moments } = await supabase.from('moments').select('day_id').in('day_id', dayIds)
       const countMap = {}
       moments?.forEach(m => { countMap[m.day_id] = (countMap[m.day_id] || 0) + 1 })
       setDays(daysData.map(d => ({ ...d, moment_count: countMap[d.id] ?? 0 })))
@@ -76,41 +78,52 @@ export default function TripHistoryPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {days.map(day => (
-              <button
-                key={day.id}
-                onClick={() => navigate(`/trips/${tripId}/days/${day.id}`)}
-                className="w-full bg-surface border border-border rounded-xl p-4 text-left active:opacity-70 transition-opacity"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <span className="text-[9px] font-medium text-brand-teal uppercase tracking-widest">Day {day.day_number}</span>
-                    <p className="text-[13px] font-bold text-white mt-0.5">{formatDate(day.date)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-brand-teal/10 border border-brand-teal/30 flex items-center justify-center">
-                      <Calendar size={14} className="text-brand-teal" />
+            {days.map(day => {
+              const startTime = formatTime(day.session_start)
+              const endTime = formatTime(day.session_end)
+              const timeRange = startTime
+                ? endTime ? `${startTime} – ${endTime}` : `Started ${startTime}`
+                : null
+
+              return (
+                <button
+                  key={day.id}
+                  onClick={() => navigate(`/trips/${tripId}/days/${day.id}`)}
+                  className="w-full bg-surface border border-border rounded-xl p-4 text-left active:opacity-70 transition-opacity"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <span className="text-[9px] font-medium text-brand-teal uppercase tracking-widest">Day {day.day_number}</span>
+                      <p className="text-[13px] font-bold text-white mt-0.5">{formatDate(day.date)}</p>
+                      {timeRange && (
+                        <p className="text-[10px] text-text-muted mt-0.5">{timeRange}</p>
+                      )}
                     </div>
-                    <ChevronRight size={14} className="text-text-muted" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {[
-                    { value: formatDuration(day.duration_seconds), label: 'Duration' },
-                    { value: day.distance_miles ? `${parseFloat(day.distance_miles).toFixed(1)}` : '0.0', unit: 'mi', label: 'Distance' },
-                    { value: day.moment_count, label: 'Moments' },
-                  ].map(({ value, unit, label }) => (
-                    <div key={label} className="flex-1 bg-surface-deep border border-[#222] rounded-sm px-2 py-1.5 text-center">
-                      <div className="flex items-baseline justify-center gap-0.5">
-                        <span className="text-[12px] font-bold text-white">{value}</span>
-                        {unit && <span className="text-[9px] text-text-muted">{unit}</span>}
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-brand-teal/10 border border-brand-teal/30 flex items-center justify-center">
+                        <Calendar size={14} className="text-brand-teal" />
                       </div>
-                      <p className="text-[9px] text-text-faint mt-0.5">{label}</p>
+                      <ChevronRight size={14} className="text-text-muted" />
                     </div>
-                  ))}
-                </div>
-              </button>
-            ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { value: formatDuration(day.duration_seconds), label: 'Duration' },
+                      { value: day.distance_miles ? `${parseFloat(day.distance_miles).toFixed(1)}` : '0.0', unit: 'mi', label: 'Distance' },
+                      { value: day.moment_count, label: 'Moments' },
+                    ].map(({ value, unit, label }) => (
+                      <div key={label} className="flex-1 bg-surface-deep border border-[#222] rounded-sm px-2 py-1.5 text-center">
+                        <div className="flex items-baseline justify-center gap-0.5">
+                          <span className="text-[12px] font-bold text-white">{value}</span>
+                          {unit && <span className="text-[9px] text-text-muted">{unit}</span>}
+                        </div>
+                        <p className="text-[9px] text-text-faint mt-0.5">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
