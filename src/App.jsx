@@ -10,6 +10,7 @@ import NewTripPage from './pages/roamer/NewTripPage'
 import ProfilePage from './pages/roamer/ProfilePage'
 import SessionPage from './pages/roamer/SessionPage'
 import MomentCapturePage from './pages/roamer/MomentCapturePage'
+import UploadPage from './pages/roamer/UploadPage'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
@@ -52,6 +53,7 @@ export default function App() {
         {/* Full-screen routes (no bottom nav) */}
         <Route path="/session/:tripId" element={<ProtectedRoute><SessionPage /></ProtectedRoute>} />
         <Route path="/capture/:tripId/:dayId" element={<ProtectedRoute><MomentCapturePage /></ProtectedRoute>} />
+        <Route path="/upload/:tripId" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
