@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Camera, MapPin, Users, Square, Plus } from 'lucide-react'
+import { Camera, MapPin, Users, Square, Plus, X } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { useSession } from '../../hooks/useSession'
@@ -24,6 +24,8 @@ export default function SessionPage() {
   const [localMoments, setLocalMoments] = useState([])
   const [starting, setStarting] = useState(false)
   const [ending, setEnding] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
+  const [thumbnails, setThumbnails] = useState({})
 
   useGPS({ dayId: session?.dayId, active: !!session })
 
@@ -56,6 +58,26 @@ export default function SessionPage() {
     if (!session) return
     loadMapData()
   }, [momentCount])
+
+  // Load photo thumbnails from IndexedDB whenever moments list changes
+  useEffect(() => {
+    const prev = thumbnails
+    let cancelled = false
+    ;(async () => {
+      const thumbs = {}
+      for (const m of localMoments) {
+        if (m.type === 'photo') {
+          const rec = await db.mediaBlobs.where('momentId').equals(m.id).first()
+          if (rec && !cancelled) thumbs[m.id] = URL.createObjectURL(rec.blob)
+        }
+      }
+      if (!cancelled) setThumbnails(thumbs)
+    })()
+    return () => {
+      cancelled = true
+      Object.values(prev).forEach(url => URL.revokeObjectURL(url))
+    }
+  }, [localMoments])
 
   async function handleStart() {
     setStarting(true)
@@ -152,9 +174,16 @@ export default function SessionPage() {
             ) : (
               localMoments.map(m => {
                 const c = MOMENT_COLORS[m.type] || MOMENT_COLORS.photo
+                const thumb = thumbnails[m.id]
                 return (
-                  <div key={m.id} className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} ${c.bg} flex flex-col items-center justify-center gap-1`}>
-                    <span className={`text-[9px] font-medium ${c.text}`}>{c.label}</span>
+                  <div key={m.id} className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} overflow-hidden`}>
+                    {thumb ? (
+                      <img src={thumb} alt={m.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`w-full h-full ${c.bg} flex flex-col items-center justify-center gap-1`}>
+                        <span className={`text-[9px] font-medium ${c.text}`}>{c.label}</span>
+                      </div>
+                    )}
                   </div>
                 )
               })
@@ -203,7 +232,10 @@ export default function SessionPage() {
             </button>
 
             <div className="flex gap-2">
-              <button className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setMapOpen(true)}
+                className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2"
+              >
                 <MapPin size={14} className="text-text-muted" />
                 <span className="text-[11px] font-bold text-[#888]">View map</span>
               </button>
@@ -230,6 +262,29 @@ export default function SessionPage() {
           </>
         )}
       </div>
+      {/* Fullscreen map overlay */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-50 bg-surface-deep flex flex-col">
+          <div className="flex items-center gap-3 px-4 pt-5 pb-3 flex-shrink-0">
+            <button
+              onClick={() => setMapOpen(false)}
+              className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center"
+            >
+              <X size={16} className="text-text-secondary" />
+            </button>
+            <h2 className="text-[15px] font-bold text-white flex-1">GPS Track</h2>
+            {session && (
+              <div className="flex items-center gap-1.5 bg-brand-teal-bg border border-brand-teal rounded-full px-2 py-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-pulse" />
+                <span className="text-[9px] text-brand-teal font-medium">Live</span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 px-4 pb-6">
+            <MiniMap points={gpsPoints} moments={localMoments} className="h-full" interactive />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

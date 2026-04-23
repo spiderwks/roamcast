@@ -6,7 +6,7 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const MOMENT_COLORS = { photo: '#BA7517', video: '#1D9E75', audio: '#7F77DD' }
 
-export default function MiniMap({ points = [], moments = [], className = '' }) {
+export default function MiniMap({ points = [], moments = [], className = '', interactive = false }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
 
@@ -22,7 +22,7 @@ export default function MiniMap({ points = [], moments = [], className = '' }) {
       style: 'mapbox://styles/mapbox/dark-v11',
       center,
       zoom: points.length > 0 ? 14 : 3,
-      interactive: false,
+      interactive,
       attributionControl: false,
     })
 
@@ -113,7 +113,7 @@ export default function MiniMap({ points = [], moments = [], className = '' }) {
     <div
       ref={containerRef}
       className={`w-full rounded-lg overflow-hidden border border-[#1e2e26] ${className}`}
-      style={{ height: 110, background: '#141a17' }}
+      style={{ minHeight: 110, background: '#141a17' }}
     />
   )
 }
