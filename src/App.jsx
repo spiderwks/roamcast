@@ -8,6 +8,8 @@ import HomePage from './pages/roamer/HomePage'
 import TripsPage from './pages/roamer/TripsPage'
 import NewTripPage from './pages/roamer/NewTripPage'
 import ProfilePage from './pages/roamer/ProfilePage'
+import SessionPage from './pages/roamer/SessionPage'
+import MomentCapturePage from './pages/roamer/MomentCapturePage'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
@@ -39,17 +41,17 @@ export default function App() {
 
         <Route
           path="/"
-          element={
-            <ProtectedRoute>
-              <RoamerLayout />
-            </ProtectedRoute>
-          }
+          element={<ProtectedRoute><RoamerLayout /></ProtectedRoute>}
         >
           <Route index element={<HomePage />} />
           <Route path="trips" element={<TripsPage />} />
           <Route path="trips/new" element={<NewTripPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
+
+        {/* Full-screen routes (no bottom nav) */}
+        <Route path="/session/:tripId" element={<ProtectedRoute><SessionPage /></ProtectedRoute>} />
+        <Route path="/capture/:tripId/:dayId" element={<ProtectedRoute><MomentCapturePage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
