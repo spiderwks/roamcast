@@ -12,6 +12,8 @@ import ProfilePage from './pages/roamer/ProfilePage'
 import SessionPage from './pages/roamer/SessionPage'
 import MomentCapturePage from './pages/roamer/MomentCapturePage'
 import UploadPage from './pages/roamer/UploadPage'
+import TripHistoryPage from './pages/roamer/TripHistoryPage'
+import DayReviewPage from './pages/roamer/DayReviewPage'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
@@ -56,6 +58,8 @@ export default function App() {
         <Route path="/session/:tripId" element={<ProtectedRoute><SessionPage /></ProtectedRoute>} />
         <Route path="/capture/:tripId/:dayId" element={<ProtectedRoute><MomentCapturePage /></ProtectedRoute>} />
         <Route path="/upload/:tripId" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
+        <Route path="/trips/:tripId/history" element={<ProtectedRoute><TripHistoryPage /></ProtectedRoute>} />
+        <Route path="/trips/:tripId/days/:dayId" element={<ProtectedRoute><DayReviewPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
