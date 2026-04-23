@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './lib/AuthContext'
+import { SessionProvider } from './lib/SessionContext'
 
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
@@ -36,6 +37,7 @@ function LoadingScreen() {
 export default function App() {
   return (
     <BrowserRouter>
+      <SessionProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -57,6 +59,7 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </SessionProvider>
     </BrowserRouter>
   )
 }
