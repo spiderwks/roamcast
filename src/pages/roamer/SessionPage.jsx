@@ -1,10 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Camera, MapPin, Users, Square, Plus, X } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { useSessionCtx } from '../../lib/SessionContext'
-import { getSessionGPSPoints } from '../../hooks/useGPS'
 import { db } from '../../lib/db'
 import MiniMap from '../../components/MiniMap'
 
@@ -20,7 +19,6 @@ export default function SessionPage() {
   const navigate = useNavigate()
   const { session, loading, elapsed, distanceMi, momentCount, loadSession, startSession, endSession, formatElapsed } = useSessionCtx()
   const [tripName, setTripName] = useState('')
-  const [gpsPoints, setGpsPoints] = useState([])
   const [localMoments, setLocalMoments] = useState([])
   const [starting, setStarting] = useState(false)
   const [ending, setEnding] = useState(false)
@@ -52,11 +50,20 @@ export default function SessionPage() {
 
   const loadMapData = useCallback(async () => {
     if (!session) return
-    const points = await getSessionGPSPoints(session.dayId)
-    setGpsPoints(points)
     const moments = await db.moments.where('dayId').equals(session.dayId).toArray()
     setLocalMoments(moments)
   }, [session])
+
+  // Path = session start anchor + moment locations in order
+  const pathPoints = useMemo(() => {
+    const pts = []
+    if (session?.startLat != null) pts.push({ lat: session.startLat, lng: session.startLng })
+    ;[...localMoments]
+      .filter(m => m.lat && m.lng)
+      .sort((a, b) => a.capturedAt - b.capturedAt)
+      .forEach(m => pts.push({ lat: m.lat, lng: m.lng }))
+    return pts
+  }, [session, localMoments])
 
   // Refresh moments when returning from capture
   useEffect(() => {
@@ -145,7 +152,7 @@ export default function SessionPage() {
       {/* Mini Map */}
       <div className="px-4 mb-4">
         <div className="relative">
-          <MiniMap points={gpsPoints} moments={localMoments} className="h-[110px]" />
+          <MiniMap points={pathPoints} moments={localMoments} className="h-[110px]" />
           {session && (
             <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-brand-teal-bg border border-brand-teal rounded-full px-2 py-1">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-pulse" />
@@ -302,7 +309,7 @@ export default function SessionPage() {
             )}
           </div>
           <div className="flex-1 px-4 pb-6">
-            <MiniMap points={gpsPoints} moments={localMoments} className="h-full" interactive onMomentClick={handleMomentDotClick} />
+            <MiniMap points={pathPoints} moments={localMoments} className="h-full" interactive onMomentClick={handleMomentDotClick} />
           </div>
         </div>
       )}

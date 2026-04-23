@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Video, Mic, Square, Trash2 } from 'lucide-react'
 import { db } from '../../lib/db'
+import { getCurrentGPS } from '../../hooks/useGPS'
 
 const MAX_DURATION = 30
 const MODES = ['photo', 'video', 'audio']
@@ -10,17 +11,6 @@ const MODE_CONFIG = {
   photo: { label: 'Photo', Icon: Camera, color: 'text-moment-photo', border: 'border-moment-photo', activeBg: 'bg-[#1f1200]' },
   video: { label: 'Video', Icon: Video, color: 'text-moment-video', border: 'border-moment-video', activeBg: 'bg-[#001a10]' },
   audio: { label: 'Audio', Icon: Mic, color: 'text-moment-audio', border: 'border-moment-audio', activeBg: 'bg-[#110d24]' },
-}
-
-function getCurrentGPS() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null)
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000 }
-    )
-  })
 }
 
 export default function MomentCapturePage() {

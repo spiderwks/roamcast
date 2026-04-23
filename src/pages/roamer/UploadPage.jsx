@@ -49,15 +49,18 @@ export default function UploadPage() {
     setItems(allItems)
     setPhase('uploading')
 
-    // ── 1. GPS track ───────────────────────────────────────────
+    // ── 1. GPS track — built from moment coordinates ───────────
     patchItem(0, { status: S.uploading })
     try {
-      const points = await db.gpsPoints.where('dayId').equals(day.id).sortBy('timestamp')
-      if (points.length > 0) {
+      const trackPoints = moments
+        .filter(m => m.lat && m.lng)
+        .sort((a, b) => a.capturedAt - b.capturedAt)
+        .map(m => ({ lat: m.lat, lng: m.lng, timestamp: m.capturedAt }))
+      if (trackPoints.length > 0) {
         await supabase.from('gps_tracks').upsert({
           day_id: day.id,
-          points: points,
-          point_count: points.length,
+          points: trackPoints,
+          point_count: trackPoints.length,
         }, { onConflict: 'day_id' })
       }
       patchItem(0, { status: S.done })
