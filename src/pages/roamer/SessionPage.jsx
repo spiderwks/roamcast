@@ -26,6 +26,8 @@ export default function SessionPage() {
   const [ending, setEnding] = useState(false)
   const [mapOpen, setMapOpen] = useState(false)
   const [thumbnails, setThumbnails] = useState({})
+  const [selectedMoment, setSelectedMoment] = useState(null)
+  const [selectedMediaURL, setSelectedMediaURL] = useState(null)
 
   useGPS({ dayId: session?.dayId, active: !!session })
 
@@ -78,6 +80,21 @@ export default function SessionPage() {
       Object.values(prev).forEach(url => URL.revokeObjectURL(url))
     }
   }, [localMoments])
+
+  async function handleMomentDotClick(momentId) {
+    const moment = localMoments.find(m => m.id === momentId)
+    if (!moment) return
+    setSelectedMoment(moment)
+    const rec = await db.mediaBlobs.where('momentId').equals(momentId).first()
+    if (rec) setSelectedMediaURL(URL.createObjectURL(rec.blob))
+    else setSelectedMediaURL(null)
+  }
+
+  function closeSelectedMoment() {
+    if (selectedMediaURL) URL.revokeObjectURL(selectedMediaURL)
+    setSelectedMoment(null)
+    setSelectedMediaURL(null)
+  }
 
   async function handleStart() {
     setStarting(true)
@@ -281,7 +298,36 @@ export default function SessionPage() {
             )}
           </div>
           <div className="flex-1 px-4 pb-6">
-            <MiniMap points={gpsPoints} moments={localMoments} className="h-full" interactive />
+            <MiniMap points={gpsPoints} moments={localMoments} className="h-full" interactive onMomentClick={handleMomentDotClick} />
+          </div>
+        </div>
+      )}
+      {/* Moment detail modal */}
+      {selectedMoment && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
+          <div className="bg-surface-deep rounded-t-2xl overflow-hidden">
+            {selectedMoment.type === 'photo' && selectedMediaURL && (
+              <img src={selectedMediaURL} alt={selectedMoment.title} className="w-full object-cover max-h-[60vh]" />
+            )}
+            {selectedMoment.type === 'video' && selectedMediaURL && (
+              <video src={selectedMediaURL} controls className="w-full max-h-[60vh]" />
+            )}
+            {selectedMoment.type === 'audio' && selectedMediaURL && (
+              <div className="p-4 bg-[#110d24]">
+                <audio src={selectedMediaURL} controls className="w-full" />
+              </div>
+            )}
+            <div className="px-4 pt-3 pb-8">
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <p className="text-[15px] font-bold text-white">{selectedMoment.title}</p>
+                <button onClick={closeSelectedMoment} className="w-7 h-7 rounded-full bg-surface border border-border flex items-center justify-center flex-shrink-0">
+                  <X size={14} className="text-text-secondary" />
+                </button>
+              </div>
+              {selectedMoment.note && (
+                <p className="text-[12px] text-text-muted leading-relaxed">{selectedMoment.note}</p>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -6,9 +6,11 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const MOMENT_COLORS = { photo: '#BA7517', video: '#1D9E75', audio: '#7F77DD' }
 
-export default function MiniMap({ points = [], moments = [], className = '', interactive = false }) {
+export default function MiniMap({ points = [], moments = [], className = '', interactive = false, onMomentClick }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const onMomentClickRef = useRef(onMomentClick)
+  useEffect(() => { onMomentClickRef.current = onMomentClick }, [onMomentClick])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -57,6 +59,14 @@ export default function MiniMap({ points = [], moments = [], className = '', int
           'circle-stroke-color': '#0f0f0f',
         },
       })
+
+      // Moment dot click handler
+      map.on('click', 'moment-dots', (e) => {
+        const momentId = e.features?.[0]?.properties?.momentId
+        if (momentId) onMomentClickRef.current?.(momentId)
+      })
+      map.on('mouseenter', 'moment-dots', () => { map.getCanvas().style.cursor = 'pointer' })
+      map.on('mouseleave', 'moment-dots', () => { map.getCanvas().style.cursor = '' })
 
       // Current position dot
       if (points.length > 0) {
@@ -136,7 +146,7 @@ function buildMomentsGeoJSON(moments) {
       .map(m => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
-        properties: { color: MOMENT_COLORS[m.type] || '#888' },
+        properties: { color: MOMENT_COLORS[m.type] || '#888', momentId: m.id },
       })),
   }
 }
