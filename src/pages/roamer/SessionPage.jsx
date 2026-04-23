@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Camera, MapPin, Users, Square, Plus, X } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
-import { useSession } from '../../hooks/useSession'
-import { useGPS, getSessionGPSPoints } from '../../hooks/useGPS'
+import { useSessionCtx } from '../../lib/SessionContext'
+import { getSessionGPSPoints } from '../../hooks/useGPS'
 import { db } from '../../lib/db'
 import MiniMap from '../../components/MiniMap'
 
@@ -18,7 +18,7 @@ export default function SessionPage() {
   const { tripId } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { session, loading, elapsed, distanceMi, momentCount, startSession, endSession, formatElapsed } = useSession(tripId, user?.id)
+  const { session, loading, elapsed, distanceMi, momentCount, loadSession, startSession, endSession, formatElapsed } = useSessionCtx()
   const [tripName, setTripName] = useState('')
   const [gpsPoints, setGpsPoints] = useState([])
   const [localMoments, setLocalMoments] = useState([])
@@ -29,7 +29,10 @@ export default function SessionPage() {
   const [selectedMoment, setSelectedMoment] = useState(null)
   const [selectedMediaURL, setSelectedMediaURL] = useState(null)
 
-  useGPS({ dayId: session?.dayId, active: !!session })
+  // Verify / restore session for this trip on mount
+  useEffect(() => {
+    loadSession(tripId, user?.id)
+  }, [tripId, user?.id])
 
   // Load trip name
   useEffect(() => {
@@ -98,7 +101,7 @@ export default function SessionPage() {
 
   async function handleStart() {
     setStarting(true)
-    try { await startSession() }
+    try { await startSession(tripId) }
     catch (e) { console.error(e) }
     finally { setStarting(false) }
   }
@@ -193,7 +196,11 @@ export default function SessionPage() {
                 const c = MOMENT_COLORS[m.type] || MOMENT_COLORS.photo
                 const thumb = thumbnails[m.id]
                 return (
-                  <div key={m.id} className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} overflow-hidden`}>
+                  <button
+                    key={m.id}
+                    onClick={() => handleMomentDotClick(m.id)}
+                    className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} overflow-hidden`}
+                  >
                     {thumb ? (
                       <img src={thumb} alt={m.title} className="w-full h-full object-cover" />
                     ) : (
@@ -201,7 +208,7 @@ export default function SessionPage() {
                         <span className={`text-[9px] font-medium ${c.text}`}>{c.label}</span>
                       </div>
                     )}
-                  </div>
+                  </button>
                 )
               })
             )}
@@ -271,7 +278,6 @@ export default function SessionPage() {
               <span className="text-[12px] text-text-muted">{ending ? 'Ending session…' : 'End session & upload'}</span>
             </button>
 
-            {/* Session timer */}
             <div className="flex items-center justify-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-pulse" />
               <span className="text-[10px] text-text-muted">Session active · {formatElapsed(elapsed)}</span>
@@ -279,14 +285,12 @@ export default function SessionPage() {
           </>
         )}
       </div>
+
       {/* Fullscreen map overlay */}
       {mapOpen && (
         <div className="fixed inset-0 z-50 bg-surface-deep flex flex-col">
           <div className="flex items-center gap-3 px-4 pt-5 pb-3 flex-shrink-0">
-            <button
-              onClick={() => setMapOpen(false)}
-              className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center"
-            >
+            <button onClick={() => setMapOpen(false)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center">
               <X size={16} className="text-text-secondary" />
             </button>
             <h2 className="text-[15px] font-bold text-white flex-1">GPS Track</h2>
@@ -302,6 +306,7 @@ export default function SessionPage() {
           </div>
         </div>
       )}
+
       {/* Moment detail modal */}
       {selectedMoment && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
