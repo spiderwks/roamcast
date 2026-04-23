@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Video, Mic, Square, Trash2 } from 'lucide-react'
 import { db } from '../../lib/db'
+import { getCurrentGPS } from '../../hooks/useGPS'
 
 const MAX_DURATION = 30
 const MODES = ['photo', 'video', 'audio']
@@ -10,17 +11,6 @@ const MODE_CONFIG = {
   photo: { label: 'Photo', Icon: Camera, color: 'text-moment-photo', border: 'border-moment-photo', activeBg: 'bg-[#1f1200]' },
   video: { label: 'Video', Icon: Video, color: 'text-moment-video', border: 'border-moment-video', activeBg: 'bg-[#001a10]' },
   audio: { label: 'Audio', Icon: Mic, color: 'text-moment-audio', border: 'border-moment-audio', activeBg: 'bg-[#110d24]' },
-}
-
-function getCurrentGPS() {
-  return new Promise((resolve) => {
-    if (!navigator.geolocation) return resolve(null)
-    navigator.geolocation.getCurrentPosition(
-      p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 8000 }
-    )
-  })
 }
 
 export default function MomentCapturePage() {
@@ -82,7 +72,6 @@ export default function MomentCapturePage() {
     setMode(newMode)
   }
 
-  // ─── Photo ────────────────────────────────────────────────
   function handlePhotoCapture(e) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -91,7 +80,6 @@ export default function MomentCapturePage() {
     setMediaBlob(file)
   }
 
-  // ─── Video / Audio recording ──────────────────────────
   async function startRecording() {
     try {
       const constraints = mode === 'video'
@@ -143,7 +131,6 @@ export default function MomentCapturePage() {
     setRecording(false)
   }
 
-  // ─── Save moment ─────────────────────────────────────────
   async function saveMoment() {
     if (!title.trim()) return
     if (!mediaBlob && mode !== 'photo') return
@@ -183,7 +170,6 @@ export default function MomentCapturePage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-deep">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
         <button onClick={() => navigate(-1)} className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center">
           <ArrowLeft size={16} className="text-text-secondary" />
@@ -197,7 +183,6 @@ export default function MomentCapturePage() {
         )}
       </div>
 
-      {/* Mode tabs */}
       <div className="px-4 mb-4">
         <div className="flex bg-surface border border-border rounded-sm p-0.5 gap-0.5">
           {MODES.map(m => {
@@ -218,10 +203,7 @@ export default function MomentCapturePage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 space-y-4">
-        {/* Capture area */}
         <div className={`w-full rounded-lg border ${cfg.border} overflow-hidden`} style={{ minHeight: 160 }}>
-
-          {/* PHOTO MODE */}
           {mode === 'photo' && (
             <>
               {mediaURL ? (
@@ -244,7 +226,6 @@ export default function MomentCapturePage() {
             </>
           )}
 
-          {/* VIDEO MODE */}
           {mode === 'video' && (
             <div className="flex flex-col items-center justify-center gap-3 py-8 bg-[#001a10]">
               {mediaURL ? (
@@ -272,7 +253,6 @@ export default function MomentCapturePage() {
             </div>
           )}
 
-          {/* AUDIO MODE */}
           {mode === 'audio' && (
             <div className="flex flex-col items-center justify-center gap-3 py-8 bg-[#110d24]">
               {mediaURL ? (
@@ -285,7 +265,6 @@ export default function MomentCapturePage() {
                       <span className="text-[12px] text-moment-audio font-medium">{recordingTime}s / {MAX_DURATION}s</span>
                     </div>
                   )}
-                  {/* Simple waveform visualization */}
                   {recording && (
                     <div className="flex items-center gap-0.5 h-8 mb-1">
                       {Array.from({ length: 20 }).map((_, i) => (
@@ -310,7 +289,6 @@ export default function MomentCapturePage() {
           )}
         </div>
 
-        {/* Discard captured media */}
         {mediaBlob && (
           <button onClick={resetCapture} className="flex items-center gap-2 text-text-muted text-[12px]">
             <Trash2 size={13} />
@@ -318,7 +296,6 @@ export default function MomentCapturePage() {
           </button>
         )}
 
-        {/* Title */}
         <div>
           <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">
             Title <span className={cfg.color}>*</span>
@@ -333,7 +310,6 @@ export default function MomentCapturePage() {
           />
         </div>
 
-        {/* Note */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[10px] uppercase tracking-widest text-text-muted">Note</label>
@@ -350,7 +326,6 @@ export default function MomentCapturePage() {
         </div>
       </div>
 
-      {/* Save CTA */}
       <div className="px-4 pb-6 pt-4">
         <button
           onClick={saveMoment}
