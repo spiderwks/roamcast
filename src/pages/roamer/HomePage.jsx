@@ -20,19 +20,19 @@ function formatDate(date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'long', day: 'numeric' }).format(date)
 }
 
-function StatCard({ value, unit, label }) {
+function StatCard({ value, unit, label, tappable }) {
   return (
-    <div className="flex-1 bg-surface-deep border border-[#222] rounded-sm px-2 py-2 text-center">
+    <div className={`flex-1 bg-surface-deep border rounded-sm px-2 py-2 text-center ${tappable ? 'border-brand-teal/40' : 'border-[#222]'}`}>
       <div className="flex items-baseline justify-center gap-0.5">
-        <span className="text-[14px] font-bold text-white">{value}</span>
+        <span className={`text-[14px] font-bold ${tappable ? 'text-brand-teal' : 'text-white'}`}>{value}</span>
         {unit && <span className="text-[9px] text-text-muted">{unit}</span>}
       </div>
-      <div className="text-[9px] text-text-faint mt-0.5">{label}</div>
+      <div className={`text-[9px] mt-0.5 ${tappable ? 'text-brand-teal/70' : 'text-text-faint'}`}>{label}</div>
     </div>
   )
 }
 
-function ActiveTripCard({ trip, onStartSession, starting }) {
+function ActiveTripCard({ trip, onStartSession, onViewHistory, starting }) {
   const AdventureIcon = ADVENTURE_ICONS[trip.adventure_type] || Mountain
 
   return (
@@ -53,7 +53,9 @@ function ActiveTripCard({ trip, onStartSession, starting }) {
       </div>
 
       <div className="flex gap-2 mb-4">
-        <StatCard value={trip.day_count ?? 0} label="Days logged" />
+        <button onClick={() => onViewHistory(trip.id)} className="flex-1">
+          <StatCard value={trip.day_count ?? 0} label="Days logged" tappable />
+        </button>
         <StatCard value={trip.moment_count ?? 0} label="Moments" />
         <StatCard value={trip.total_miles ?? '0.0'} unit="mi" label="Miles" />
       </div>
@@ -74,11 +76,14 @@ function ActiveTripCard({ trip, onStartSession, starting }) {
   )
 }
 
-function PastTripCard({ trip }) {
+function PastTripCard({ trip, onViewHistory }) {
   const AdventureIcon = ADVENTURE_ICONS[trip.adventure_type] || Mountain
 
   return (
-    <div className="bg-surface border border-border rounded-lg p-3 flex items-center gap-3">
+    <button
+      onClick={() => onViewHistory(trip.id)}
+      className="w-full bg-surface border border-border rounded-lg p-3 flex items-center gap-3 active:opacity-70 transition-opacity text-left"
+    >
       <div className="bg-surface-elevated border border-border rounded-md p-2 flex-shrink-0">
         <AdventureIcon size={16} className="text-brand-teal" />
       </div>
@@ -92,7 +97,7 @@ function PastTripCard({ trip }) {
         <CheckCircle size={10} className="text-text-muted" />
         <span className="text-[9px] text-text-muted font-medium">Complete</span>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -135,6 +140,10 @@ export default function HomePage() {
       setTrips({ active, past })
     }
     setLoading(false)
+  }
+
+  function handleViewHistory(tripId) {
+    navigate(`/trips/${tripId}/history`)
   }
 
   async function handleStartSession(tripId) {
@@ -180,7 +189,7 @@ export default function HomePage() {
           <>
             {/* Active trip */}
             {trips.active ? (
-              <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} starting={starting} />
+              <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
             ) : (
               <div className="bg-surface border border-border rounded-xl p-6 text-center">
                 <p className="text-text-muted text-sm mb-1">No active trip</p>
@@ -199,7 +208,7 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-2">
                   {trips.past.map(trip => (
-                    <PastTripCard key={trip.id} trip={trip} />
+                    <PastTripCard key={trip.id} trip={trip} onViewHistory={handleViewHistory} />
                   ))}
                 </div>
               </div>
