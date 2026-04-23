@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { db } from './db'
-import { useGPS, getSessionGPSPoints, calcTotalDistance } from '../hooks/useGPS'
+import { getCurrentGPS, calcTotalDistance } from '../hooks/useGPS'
 
 const Ctx = createContext(null)
 const LS_KEY = 'roamcast_active_session'
@@ -15,9 +15,6 @@ export function SessionProvider({ children }) {
   const [distanceMi, setDistanceMi] = useState(0)
   const [momentCount, setMomentCount] = useState(0)
 
-  // GPS runs here — above the router, so it never stops during in-app navigation
-  useGPS({ dayId: session?.dayId, active: !!session })
-
   // Session timer
   useEffect(() => {
     if (!session) return
@@ -27,7 +24,7 @@ export function SessionProvider({ children }) {
     return () => clearInterval(id)
   }, [session])
 
-  // Distance update every 30s
+  // Distance recalculated from moment coordinates every 30s
   useEffect(() => {
     if (!session) return
     updateDistance()
@@ -37,11 +34,13 @@ export function SessionProvider({ children }) {
 
   async function updateDistance() {
     if (!session) return
-    const points = await getSessionGPSPoints(session.dayId)
-    setDistanceMi(parseFloat(calcTotalDistance(points).toFixed(2)))
+    const moments = await db.moments.where('dayId').equals(session.dayId).sortBy('capturedAt')
+    const pts = []
+    if (session.startLat != null) pts.push({ lat: session.startLat, lng: session.startLng })
+    moments.filter(m => m.lat && m.lng).forEach(m => pts.push({ lat: m.lat, lng: m.lng }))
+    setDistanceMi(parseFloat(calcTotalDistance(pts).toFixed(2)))
   }
 
-  // Called by SessionPage on mount to verify/restore session from Supabase
   async function loadSession(tripId, userId) {
     if (!tripId || !userId) return
     setLoading(true)
@@ -55,7 +54,7 @@ export function SessionProvider({ children }) {
       .single()
 
     if (data?.session_start && !data?.session_end) {
-      const s = { dayId: data.id, dayNumber: data.day_number, startTime: new Date(data.session_start).getTime(), tripId }
+      const s = { dayId: data.id, dayNumber: data.day_number, startTime: new Date(data.session_start).getTime(), tripId, startLat: data.start_lat ?? null, startLng: data.start_lng ?? null }
       persist(s)
       const count = await db.moments.where('dayId').equals(data.id).count()
       setMomentCount(count)
@@ -76,6 +75,8 @@ export function SessionProvider({ children }) {
 
     const dayNumber = (existing?.day_number ?? 0) + 1
     const now = new Date().toISOString()
+    const coords = await getCurrentGPS()
+
     const { data: day, error } = await supabase
       .from('days')
       .insert({ trip_id: tripId, day_number: dayNumber, date: now.split('T')[0], session_start: now, upload_status: 'pending' })
@@ -84,7 +85,7 @@ export function SessionProvider({ children }) {
 
     if (error) throw error
 
-    persist({ dayId: day.id, dayNumber, startTime: Date.now(), tripId })
+    persist({ dayId: day.id, dayNumber, startTime: Date.now(), tripId, startLat: coords?.lat ?? null, startLng: coords?.lng ?? null })
     setElapsed(0)
     setMomentCount(0)
     return day
