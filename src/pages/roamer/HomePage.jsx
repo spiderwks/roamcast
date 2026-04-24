@@ -118,12 +118,7 @@ export default function HomePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('trips')
-      .select(`
-        *,
-        days(count),
-        followers(count),
-        moments:days(moments(count))
-      `)
+      .select('*, days(count), followers(count)')
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
 
