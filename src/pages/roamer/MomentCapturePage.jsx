@@ -141,7 +141,7 @@ export default function MomentCapturePage() {
     if (mode !== 'photo' && !mediaBlob) return
 
     if (!dayId || dayId === 'undefined') {
-      setSaveError('Session not found. Go back and start today's session first.')
+      setSaveError("Session not found. Go back and start today's session first.")
       return
     }
 
