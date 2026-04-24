@@ -49,15 +49,18 @@ export default function UploadPage() {
     setItems(allItems)
     setPhase('uploading')
 
-    // ── 1. GPS track ─────────────────────────────────────────────────
+    // ── 1. GPS track — built from moment coordinates ───────────
     patchItem(0, { status: S.uploading })
     try {
-      const points = await db.gpsPoints.where('dayId').equals(day.id).sortBy('timestamp')
-      if (points.length > 0) {
+      const trackPoints = moments
+        .filter(m => m.lat && m.lng)
+        .sort((a, b) => a.capturedAt - b.capturedAt)
+        .map(m => ({ lat: m.lat, lng: m.lng, timestamp: m.capturedAt }))
+      if (trackPoints.length > 0) {
         await supabase.from('gps_tracks').upsert({
           day_id: day.id,
-          points: points,
-          point_count: points.length,
+          points: trackPoints,
+          point_count: trackPoints.length,
         }, { onConflict: 'day_id' })
       }
       patchItem(0, { status: S.done })
@@ -65,7 +68,7 @@ export default function UploadPage() {
       patchItem(0, { status: S.error })
     }
 
-    // ── 2. Moments ─────────────────────────────────────────────────
+    // ── 2. Moments ─────────────────────────────────────────────
     for (let i = 0; i < moments.length; i++) {
       const itemIdx = i + 1
       const m = moments[i]
@@ -83,6 +86,9 @@ export default function UploadPage() {
           if (!storageErr) {
             mediaUrl = path
             await db.mediaBlobs.where('momentId').equals(m.id).delete()
+          } else {
+            console.error('[upload] storage error:', m.id, storageErr)
+            throw new Error(storageErr.message)
           }
         }
 
@@ -106,7 +112,7 @@ export default function UploadPage() {
       }
     }
 
-    // ── 3. Mark day complete ──────────────────────────────────────────
+    // ── 3. Mark day complete ────────────────────────────────────
     await supabase.from('days').update({
       upload_status: 'complete',
       uploaded_at: new Date().toISOString(),
@@ -165,7 +171,7 @@ export default function UploadPage() {
 
       {/* Items list */}
       <div className="flex-1 overflow-y-auto px-4">
-        {items.map((item) => (
+        {items.map((item, i) => (
           <div key={item.key} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
             <div className="flex-shrink-0 w-5 flex items-center justify-center">
               {item.status === S.done && <CheckCircle size={16} className="text-brand-teal" />}
