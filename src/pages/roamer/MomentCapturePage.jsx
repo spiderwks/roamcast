@@ -24,6 +24,7 @@ export default function MomentCapturePage() {
   const [mediaBlob, setMediaBlob] = useState(null)
   const [mediaURL, setMediaURL] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState(null)
   const [gpsLocked, setGpsLocked] = useState(false)
   const [gpsCoords, setGpsCoords] = useState(null)
   const [photoFile, setPhotoFile] = useState(null)
@@ -136,12 +137,16 @@ export default function MomentCapturePage() {
   // ─── Save moment ──────────────────────────────────
   async function saveMoment() {
     if (!title.trim()) return
-    if (!mediaBlob && mode !== 'photo') return
     if (mode === 'photo' && !mediaBlob) return
+    if (mode !== 'photo' && !mediaBlob) return
 
     setSaving(true)
+    setSaveError(null)
     try {
-      const coords = gpsCoords || await getCurrentGPS()
+      let coords = gpsCoords
+      if (!coords) {
+        try { coords = await getCurrentGPS() } catch (_) {}
+      }
       const momentId = crypto.randomUUID()
 
       await db.moments.add({
@@ -164,6 +169,7 @@ export default function MomentCapturePage() {
       navigate(-1)
     } catch (err) {
       console.error('Save failed:', err)
+      setSaveError(err?.message || 'Failed to save moment. Please try again.')
       setSaving(false)
     }
   }
@@ -342,6 +348,17 @@ export default function MomentCapturePage() {
 
       {/* Save CTA */}
       <div className="px-4 pb-6 pt-4">
+        {saveError && (
+          <p className="text-red-400 text-[11px] text-center mb-3">{saveError}</p>
+        )}
+        {!mediaBlob && !saving && (
+          <p className="text-text-disabled text-[11px] text-center mb-2">
+            {mode === 'photo' ? 'Take a photo first' : `Record ${mode} first`}
+          </p>
+        )}
+        {mediaBlob && !title.trim() && !saving && (
+          <p className="text-text-disabled text-[11px] text-center mb-2">Enter a title to save</p>
+        )}
         <button
           onClick={saveMoment}
           disabled={!canSave || saving}
