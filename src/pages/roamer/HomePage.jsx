@@ -118,15 +118,17 @@ export default function HomePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('trips')
-      .select('*, days(count), followers(count)')
+      .select('*')
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
+
+    if (error) console.error('[trips] load error:', error)
 
     if (!error && data) {
       const enriched = data.map(t => ({
         ...t,
-        day_count: t.days?.[0]?.count ?? 0,
-        follower_count: t.followers?.[0]?.count ?? 0,
+        day_count: 0,
+        follower_count: 0,
         moment_count: 0,
         total_miles: '0.0',
       }))
@@ -142,7 +144,6 @@ export default function HomePage() {
   }
 
   async function handleStartSession(tripId) {
-    // Already have an active session for this trip — just go straight to it
     if (session?.tripId === tripId) {
       navigate(`/session/${tripId}`)
       return
@@ -182,7 +183,6 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Active trip */}
             {trips.active ? (
               <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
             ) : (
@@ -192,13 +192,10 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Past trips */}
             {trips.past.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[11px] font-bold text-white uppercase tracking-wide">
-                    Past trips
-                  </p>
+                  <p className="text-[11px] font-bold text-white uppercase tracking-wide">Past trips</p>
                   <button className="text-[10px] text-brand-teal">See all</button>
                 </div>
                 <div className="space-y-2">
@@ -209,7 +206,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* New trip button */}
             <button
               onClick={() => navigate('/trips/new')}
               className="w-full border border-dashed border-[#2e2e2e] rounded-xl py-4 flex items-center justify-center gap-2"
