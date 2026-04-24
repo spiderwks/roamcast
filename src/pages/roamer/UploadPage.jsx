@@ -82,7 +82,7 @@ export default function UploadPage() {
           const path = `${user.id}/${day.id}/${m.id}.${ext}`
           const { error: storageErr } = await supabase.storage
             .from('media')
-            .upload(path, blobRec.blob, { upsert: true })
+            .upload(path, blobRec.data ? new Blob([blobRec.data], { type: blobRec.mimeType }) : blobRec.blob, { upsert: true })
           if (!storageErr) {
             mediaUrl = path
             await db.mediaBlobs.where('momentId').equals(m.id).delete()

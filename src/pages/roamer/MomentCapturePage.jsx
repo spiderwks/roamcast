@@ -168,7 +168,8 @@ export default function MomentCapturePage() {
       })
 
       if (mediaBlob) {
-        await db.mediaBlobs.add({ momentId, blob: mediaBlob, type: mode })
+        const data = await mediaBlob.arrayBuffer()
+        await db.mediaBlobs.add({ momentId, data, mimeType: mediaBlob.type, type: mode })
       }
 
       navigate(-1)
