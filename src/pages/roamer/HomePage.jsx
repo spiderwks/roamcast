@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Mountain, Footprints, Bike, Waves, Ship, Car, Play, Users, CheckCircle } from 'lucide-react'
+import { Plus, Mountain, Footprints, Bike, Waves, Ship, Car, Play, CheckCircle } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { useSessionCtx } from '../../lib/SessionContext'
@@ -34,14 +34,11 @@ function StatCard({ value, unit, label, tappable }) {
 
 function ActiveTripCard({ trip, onStartSession, onViewHistory, starting }) {
   const AdventureIcon = ADVENTURE_ICONS[trip.adventure_type] || Mountain
-
   return (
     <div className="bg-surface border border-border rounded-xl p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-[9px] font-medium text-brand-teal uppercase tracking-[0.8px] mb-0.5">
-            Active trip
-          </p>
+          <p className="text-[9px] font-medium text-brand-teal uppercase tracking-[0.8px] mb-0.5">Active trip</p>
           <p className="text-[14px] font-bold text-white">{trip.name}</p>
           <p className="text-[10px] text-text-muted mt-0.5">
             Day {trip.day_count ?? 0} · {trip.follower_count ?? 0} follower{trip.follower_count !== 1 ? 's' : ''}
@@ -51,7 +48,6 @@ function ActiveTripCard({ trip, onStartSession, onViewHistory, starting }) {
           <AdventureIcon size={18} className="text-brand-teal" />
         </div>
       </div>
-
       <div className="flex gap-2 mb-4">
         <button onClick={() => onViewHistory(trip.id)} className="flex-1">
           <StatCard value={trip.day_count ?? 0} label="Days logged" tappable />
@@ -59,7 +55,6 @@ function ActiveTripCard({ trip, onStartSession, onViewHistory, starting }) {
         <StatCard value={trip.moment_count ?? 0} label="Moments" />
         <StatCard value={trip.total_miles ?? '0.0'} unit="mi" label="Miles" />
       </div>
-
       <button
         onClick={() => onStartSession(trip.id)}
         disabled={starting}
@@ -78,7 +73,6 @@ function ActiveTripCard({ trip, onStartSession, onViewHistory, starting }) {
 
 function PastTripCard({ trip, onViewHistory }) {
   const AdventureIcon = ADVENTURE_ICONS[trip.adventure_type] || Mountain
-
   return (
     <button
       onClick={() => onViewHistory(trip.id)}
@@ -89,9 +83,7 @@ function PastTripCard({ trip, onViewHistory }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-bold text-white truncate">{trip.name}</p>
-        <p className="text-[10px] text-text-muted">
-          {trip.day_count ?? 0} days · {trip.moment_count ?? 0} moments
-        </p>
+        <p className="text-[10px] text-text-muted">{trip.day_count ?? 0} days · {trip.moment_count ?? 0} moments</p>
       </div>
       <div className="flex items-center gap-1 bg-surface-deep border border-border rounded-full px-2 py-0.5">
         <CheckCircle size={10} className="text-text-muted" />
@@ -108,6 +100,7 @@ export default function HomePage() {
   const [trips, setTrips] = useState({ active: null, past: [] })
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -122,7 +115,8 @@ export default function HomePage() {
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) console.error('[trips] load error:', error)
+    if (error) setLoadError(error.message)
+    else setLoadError(null)
 
     if (!error && data) {
       const enriched = data.map(t => ({
@@ -159,23 +153,17 @@ export default function HomePage() {
   }
 
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Roamer'
-  const initials = displayName.split(' ').map(w => w[0]).slice(0, 2).join('')
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3">
         <Logo />
         <Avatar name={displayName} size={32} />
       </div>
-
-      {/* Greeting */}
       <div className="px-4 mb-4">
         <p className="text-[10px] text-text-muted">{formatDate(new Date())}</p>
         <p className="text-[19px] font-bold text-white mt-0.5">Your adventures</p>
       </div>
-
-      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -183,6 +171,12 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {loadError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <p className="text-[10px] text-red-400 font-mono break-all">{loadError}</p>
+              </div>
+            )}
+
             {trips.active ? (
               <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
             ) : (
