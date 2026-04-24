@@ -88,6 +88,13 @@ export function SessionProvider({ children }) {
     persist({ dayId: day.id, dayNumber, startTime: Date.now(), tripId, startLat: coords?.lat ?? null, startLng: coords?.lng ?? null })
     setElapsed(0)
     setMomentCount(0)
+
+    // Notify followers — fire and forget
+    const { data: tripData } = await supabase.from('trips').select('name').eq('id', tripId).single()
+    supabase.functions.invoke('notify-followers', {
+      body: { tripId, event: 'start', dayNumber, tripName: tripData?.name ?? '' },
+    }).catch(() => {})
+
     return day
   }
 
@@ -97,6 +104,13 @@ export function SessionProvider({ children }) {
       .from('days')
       .update({ session_end: new Date().toISOString(), duration_seconds: elapsed, distance_miles: distanceMi })
       .eq('id', session.dayId)
+
+    // Notify followers — fire and forget
+    const { data: tripData } = await supabase.from('trips').select('name').eq('id', session.tripId).single()
+    supabase.functions.invoke('notify-followers', {
+      body: { tripId: session.tripId, event: 'end', dayNumber: session.dayNumber, tripName: tripData?.name ?? '' },
+    }).catch(() => {})
+
     clear()
   }
 
