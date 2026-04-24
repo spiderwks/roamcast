@@ -30,7 +30,7 @@ Deno.serve(async (req: Request) => {
     .from('trips')
     .select('id')
     .eq('id', tripId)
-    .eq('user_id', user.id)
+    .eq('roamer_id', user.id)
     .single()
   if (!trip) return new Response('Forbidden', { status: 403 })
 

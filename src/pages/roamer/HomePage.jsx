@@ -118,12 +118,7 @@ export default function HomePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('trips')
-      .select(`
-        *,
-        days(count),
-        followers(count),
-        moments:days(moments(count))
-      `)
+      .select('*, days(count), followers(count)')
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
 
@@ -147,6 +142,7 @@ export default function HomePage() {
   }
 
   async function handleStartSession(tripId) {
+    // Already have an active session for this trip — just go straight to it
     if (session?.tripId === tripId) {
       navigate(`/session/${tripId}`)
       return
@@ -166,16 +162,19 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center justify-between px-4 pt-5 pb-3">
         <Logo />
         <Avatar name={displayName} size={32} />
       </div>
 
+      {/* Greeting */}
       <div className="px-4 mb-4">
         <p className="text-[10px] text-text-muted">{formatDate(new Date())}</p>
         <p className="text-[19px] font-bold text-white mt-0.5">Your adventures</p>
       </div>
 
+      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -183,6 +182,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {/* Active trip */}
             {trips.active ? (
               <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
             ) : (
@@ -192,6 +192,7 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* Past trips */}
             {trips.past.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -208,6 +209,7 @@ export default function HomePage() {
               </div>
             )}
 
+            {/* New trip button */}
             <button
               onClick={() => navigate('/trips/new')}
               className="w-full border border-dashed border-[#2e2e2e] rounded-xl py-4 flex items-center justify-center gap-2"
