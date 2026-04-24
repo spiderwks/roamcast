@@ -270,7 +270,10 @@ export default function SessionPage() {
                 <MapPin size={14} className="text-text-muted" />
                 <span className="text-[11px] font-bold text-[#888]">View map</span>
               </button>
-              <button className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2">
+              <button
+                onClick={() => navigate(`/trips/${tripId}/followers`)}
+                className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2"
+              >
                 <Users size={14} className="text-text-muted" />
                 <span className="text-[11px] font-bold text-[#888]">Followers</span>
               </button>

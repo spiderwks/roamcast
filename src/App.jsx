@@ -14,6 +14,9 @@ import MomentCapturePage from './pages/roamer/MomentCapturePage'
 import UploadPage from './pages/roamer/UploadPage'
 import TripHistoryPage from './pages/roamer/TripHistoryPage'
 import DayReviewPage from './pages/roamer/DayReviewPage'
+import FollowersPage from './pages/roamer/FollowersPage'
+import FollowerAuthPage from './pages/follower/FollowerAuthPage'
+import FollowerDashboard from './pages/follower/FollowerDashboard'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
@@ -60,6 +63,11 @@ export default function App() {
         <Route path="/upload/:tripId" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
         <Route path="/trips/:tripId/history" element={<ProtectedRoute><TripHistoryPage /></ProtectedRoute>} />
         <Route path="/trips/:tripId/days/:dayId" element={<ProtectedRoute><DayReviewPage /></ProtectedRoute>} />
+        <Route path="/trips/:tripId/followers" element={<ProtectedRoute><FollowersPage /></ProtectedRoute>} />
+
+        {/* Follower routes — public, handle their own auth */}
+        <Route path="/follow/:tripId" element={<FollowerAuthPage />} />
+        <Route path="/follow/:tripId/view" element={<FollowerDashboard />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
