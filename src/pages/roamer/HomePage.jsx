@@ -108,6 +108,7 @@ export default function HomePage() {
   const [trips, setTrips] = useState({ active: null, past: [] })
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -122,7 +123,8 @@ export default function HomePage() {
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
 
-    if (error) console.error('[trips] load error:', error)
+    if (error) setLoadError(error.message)
+    else setLoadError(null)
 
     if (!error && data) {
       const enriched = data.map(t => ({
@@ -184,6 +186,13 @@ export default function HomePage() {
           </div>
         ) : (
           <>
+            {/* Debug error */}
+            {loadError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                <p className="text-[10px] text-red-400 font-mono break-all">{loadError}</p>
+              </div>
+            )}
+
             {/* Active trip */}
             {trips.active ? (
               <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
