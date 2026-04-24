@@ -128,6 +128,7 @@ export default function SessionPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-deep overflow-y-auto">
+      {/* Header */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center justify-between mb-1">
           <span className="text-[9px] font-medium text-brand-teal uppercase tracking-[0.8px]">
@@ -142,6 +143,7 @@ export default function SessionPage() {
         <p className="text-[14px] font-bold text-white truncate">{tripName}</p>
       </div>
 
+      {/* Mini Map */}
       <div className="px-4 mb-4">
         <div className="relative">
           <MiniMap points={pathPoints} moments={localMoments} className="h-[110px]" />
@@ -154,6 +156,7 @@ export default function SessionPage() {
         </div>
       </div>
 
+      {/* Stats */}
       <div className="flex gap-2 px-4 mb-4">
         {[
           { value: distanceMi.toFixed(1), unit: 'mi', label: 'Distance' },
@@ -170,10 +173,13 @@ export default function SessionPage() {
         ))}
       </div>
 
+      {/* Today's moments strip */}
       {session && (
         <div className="px-4 mb-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">Today's moments</span>
+            <span className="text-[10px] font-medium uppercase tracking-widest text-text-muted">
+              Today's moments
+            </span>
             <div className="flex items-center gap-2">
               {Object.entries(MOMENT_COLORS).map(([type, c]) => (
                 <div key={type} className="flex items-center gap-1">
@@ -191,7 +197,11 @@ export default function SessionPage() {
                 const c = MOMENT_COLORS[m.type] || MOMENT_COLORS.photo
                 const thumb = thumbnails[m.id]
                 return (
-                  <button key={m.id} onClick={() => handleMomentDotClick(m.id)} className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} overflow-hidden`}>
+                  <button
+                    key={m.id}
+                    onClick={() => handleMomentDotClick(m.id)}
+                    className={`flex-shrink-0 w-14 h-14 rounded-lg border ${c.border} overflow-hidden`}
+                  >
                     {thumb ? (
                       <img src={thumb} alt={m.title} className="w-full h-full object-cover" />
                     ) : (
@@ -204,7 +214,10 @@ export default function SessionPage() {
               })
             )}
             {localMoments.length > 0 && (
-              <button onClick={() => session && navigate(`/capture/${tripId}/${session.dayId}`)} className="flex-shrink-0 w-14 h-14 rounded-lg border border-dashed border-brand-teal flex items-center justify-center">
+              <button
+                onClick={() => session && navigate(`/capture/${tripId}/${session.dayId}`)}
+                className="flex-shrink-0 w-14 h-14 rounded-lg border border-dashed border-brand-teal flex items-center justify-center"
+              >
                 <Plus size={16} className="text-brand-teal" />
               </button>
             )}
@@ -212,9 +225,14 @@ export default function SessionPage() {
         </div>
       )}
 
+      {/* Main CTA */}
       <div className="px-4 space-y-3 mt-auto pb-6">
         {!session ? (
-          <button onClick={handleStart} disabled={starting} className="w-full bg-brand-teal rounded-xl py-4 flex items-center gap-3 px-5 disabled:opacity-50">
+          <button
+            onClick={handleStart}
+            disabled={starting}
+            className="w-full bg-brand-teal rounded-xl py-4 flex items-center gap-3 px-5 disabled:opacity-50"
+          >
             <div className="w-10 h-10 rounded-full bg-brand-teal-dark flex items-center justify-center flex-shrink-0">
               <Camera size={18} className="text-white" />
             </div>
@@ -225,7 +243,10 @@ export default function SessionPage() {
           </button>
         ) : (
           <>
-            <button onClick={() => navigate(`/capture/${tripId}/${session.dayId}`)} className="w-full bg-brand-teal rounded-xl py-4 flex items-center gap-3 px-5">
+            <button
+              onClick={() => navigate(`/capture/${tripId}/${session.dayId}`)}
+              className="w-full bg-brand-teal rounded-xl py-4 flex items-center gap-3 px-5"
+            >
               <div className="w-10 h-10 rounded-full bg-brand-teal-dark flex items-center justify-center flex-shrink-0">
                 <Camera size={18} className="text-white" />
               </div>
@@ -236,7 +257,10 @@ export default function SessionPage() {
             </button>
 
             <div className="flex gap-2">
-              <button onClick={() => setMapOpen(true)} className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setMapOpen(true)}
+                className="flex-1 bg-surface border border-border rounded-md py-3 flex items-center justify-center gap-2"
+              >
                 <MapPin size={14} className="text-text-muted" />
                 <span className="text-[11px] font-bold text-[#888]">View map</span>
               </button>
@@ -246,19 +270,26 @@ export default function SessionPage() {
               </button>
             </div>
 
-            <button onClick={handleEnd} disabled={ending} className="w-full bg-surface-elevated border border-[#2e2e2e] rounded-xl py-3 flex items-center justify-center gap-2 disabled:opacity-50">
+            <button
+              onClick={handleEnd}
+              disabled={ending}
+              className="w-full bg-surface-elevated border border-[#2e2e2e] rounded-xl py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
               <Square size={13} className="text-text-muted" />
               <span className="text-[12px] text-text-muted">{ending ? 'Ending session…' : 'End session & upload'}</span>
             </button>
 
             <div className="flex items-center justify-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-brand-teal animate-pulse" />
-              <span className="text-[10px] text-text-muted">Session active · {formatElapsed(elapsed)}</span>
+              <span className="text-[10px] text-text-muted">
+                Started {new Date(session.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} · {formatElapsed(elapsed)}
+              </span>
             </div>
           </>
         )}
       </div>
 
+      {/* Fullscreen map overlay */}
       {mapOpen && (
         <div className="fixed inset-0 z-50 bg-surface-deep flex flex-col">
           <div className="flex items-center gap-3 px-4 pt-5 pb-3 flex-shrink-0">
@@ -279,6 +310,7 @@ export default function SessionPage() {
         </div>
       )}
 
+      {/* Moment detail modal */}
       {selectedMoment && (
         <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
           <div className="bg-surface-deep rounded-t-2xl overflow-hidden">
