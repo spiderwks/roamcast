@@ -28,9 +28,10 @@ function formatTime(isoStr) {
   return new Date(isoStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
-function getPublicUrl(path) {
+async function getSignedUrl(path) {
   if (!path) return null
-  return supabase.storage.from('media').getPublicUrl(path).data.publicUrl
+  const { data } = await supabase.storage.from('media').createSignedUrl(path, 3600)
+  return data?.signedUrl ?? null
 }
 
 async function fetchSnappedRoute(pts) {
@@ -58,8 +59,25 @@ export default function DayReviewPage() {
   const [loading, setLoading] = useState(true)
   const [selectedMoment, setSelectedMoment] = useState(null)
   const [mapOpen, setMapOpen] = useState(false)
+  const [signedUrls, setSignedUrls] = useState({})
 
   useEffect(() => { loadData() }, [dayId])
+
+  useEffect(() => {
+    if (!moments.length) return
+    ;(async () => {
+      const urls = {}
+      await Promise.all(
+        moments
+          .filter(m => m.media_url)
+          .map(async m => {
+            const url = await getSignedUrl(m.media_url)
+            if (url) urls[m.id] = url
+          })
+      )
+      setSignedUrls(urls)
+    })()
+  }, [moments])
 
   async function loadData() {
     setLoading(true)
@@ -99,7 +117,7 @@ export default function DayReviewPage() {
     )
   }
 
-  const selectedMediaUrl = selectedMoment?.media_url ? getPublicUrl(selectedMoment.media_url) : null
+  const selectedMediaUrl = selectedMoment ? signedUrls[selectedMoment.id] ?? null : null
 
   return (
     <div className="flex flex-col h-full bg-surface-deep overflow-y-auto">
@@ -183,7 +201,7 @@ export default function DayReviewPage() {
             {moments.map(m => {
               const c = MOMENT_COLORS[m.type] || MOMENT_COLORS.photo
               const Icon = TYPE_ICONS[m.type] || Camera
-              const mediaUrl = m.type === 'photo' ? getPublicUrl(m.media_url) : null
+              const mediaUrl = m.type === 'photo' ? signedUrls[m.id] ?? null : null
               return (
                 <button
                   key={m.id}
