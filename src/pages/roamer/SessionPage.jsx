@@ -80,7 +80,10 @@ export default function SessionPage() {
       for (const m of localMoments) {
         if (m.type === 'photo') {
           const rec = await db.mediaBlobs.where('momentId').equals(m.id).first()
-          if (rec && !cancelled) thumbs[m.id] = URL.createObjectURL(rec.blob)
+          if (rec && !cancelled) {
+            const blob = rec.data ? new Blob([rec.data], { type: rec.mimeType }) : rec.blob
+            thumbs[m.id] = URL.createObjectURL(blob)
+          }
         }
       }
       if (!cancelled) setThumbnails(thumbs)
@@ -96,8 +99,10 @@ export default function SessionPage() {
     if (!moment) return
     setSelectedMoment(moment)
     const rec = await db.mediaBlobs.where('momentId').equals(momentId).first()
-    if (rec) setSelectedMediaURL(URL.createObjectURL(rec.blob))
-    else setSelectedMediaURL(null)
+    if (rec) {
+      const blob = rec.data ? new Blob([rec.data], { type: rec.mimeType }) : rec.blob
+      setSelectedMediaURL(URL.createObjectURL(blob))
+    } else setSelectedMediaURL(null)
   }
 
   function closeSelectedMoment() {
