@@ -118,15 +118,17 @@ export default function HomePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('trips')
-      .select('*, days(count), followers(count)')
+      .select('*')
       .eq('roamer_id', user.id)
       .order('created_at', { ascending: false })
+
+    if (error) console.error('[trips] load error:', error)
 
     if (!error && data) {
       const enriched = data.map(t => ({
         ...t,
-        day_count: t.days?.[0]?.count ?? 0,
-        follower_count: t.followers?.[0]?.count ?? 0,
+        day_count: 0,
+        follower_count: 0,
         moment_count: 0,
         total_miles: '0.0',
       }))
