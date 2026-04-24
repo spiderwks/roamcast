@@ -30,7 +30,8 @@ function formatTime(isoStr) {
 
 async function getSignedUrl(path) {
   if (!path) return null
-  const { data } = await supabase.storage.from('media').createSignedUrl(path, 3600)
+  const { data, error } = await supabase.storage.from('media').createSignedUrl(path, 3600)
+  if (error) console.error('[media] createSignedUrl failed:', path, error)
   return data?.signedUrl ?? null
 }
 
@@ -75,6 +76,7 @@ export default function DayReviewPage() {
             if (url) urls[m.id] = url
           })
       )
+      console.log('[debug] signedUrls:', urls)
       setSignedUrls(urls)
     })()
   }, [moments])
@@ -91,6 +93,7 @@ export default function DayReviewPage() {
 
     if (dayData) setDay(dayData)
     const moms = momentsData ?? []
+    console.log('[debug] moments:', moms.map(m => ({ id: m.id, type: m.type, title: m.title, media_url: m.media_url })))
     setMoments(moms)
 
     const pts = trackData?.points?.length
