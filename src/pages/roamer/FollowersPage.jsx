@@ -35,6 +35,7 @@ export default function FollowersPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     } catch {
+      // Fallback for devices that don't support clipboard API
       const el = document.createElement('textarea')
       el.value = shareUrl
       document.body.appendChild(el)
