@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, X, Camera, Video, Mic } from 'lucide-react'
+import { ArrowLeft, X, Camera, Video, Mic, RefreshCw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
+import { db } from '../../lib/db'
 import MiniMap from '../../components/MiniMap'
+
+const TYPE_EXT = { photo: 'jpg', video: 'webm', audio: 'webm' }
 
 const MOMENT_COLORS = {
   photo: { border: 'border-moment-photo', bg: 'bg-[#1f1200]', text: 'text-moment-photo', label: 'Photo' },
@@ -52,6 +56,7 @@ async function fetchSnappedRoute(pts) {
 
 export default function DayReviewPage() {
   const { tripId, dayId } = useParams()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [day, setDay] = useState(null)
   const [moments, setMoments] = useState([])
@@ -61,6 +66,8 @@ export default function DayReviewPage() {
   const [selectedMoment, setSelectedMoment] = useState(null)
   const [mapOpen, setMapOpen] = useState(false)
   const [signedUrls, setSignedUrls] = useState({})
+  const [recovering, setRecovering] = useState(false)
+  const [recoverStatus, setRecoverStatus] = useState(null)
 
   useEffect(() => { loadData() }, [dayId])
 
@@ -110,6 +117,31 @@ export default function DayReviewPage() {
   function handleMomentDotClick(momentId) {
     const m = moments.find(m => m.id === momentId)
     if (m) setSelectedMoment(m)
+  }
+
+  async function recoverMedia() {
+    if (!user) return
+    setRecovering(true)
+    setRecoverStatus(null)
+    const missing = moments.filter(m => !m.media_url)
+    let recovered = 0
+    for (const m of missing) {
+      const blobRec = await db.mediaBlobs.where('momentId').equals(m.id).first()
+      if (!blobRec) continue
+      const ext = TYPE_EXT[m.type] || 'bin'
+      const path = `${user.id}/${dayId}/${m.id}.${ext}`
+      const { error } = await supabase.storage.from('media').upload(path, blobRec.blob, { upsert: true })
+      if (!error) {
+        await supabase.from('moments').update({ media_url: path }).eq('id', m.id)
+        await db.mediaBlobs.where('momentId').equals(m.id).delete()
+        recovered++
+      } else {
+        console.error('[recover] storage upload failed:', m.id, error)
+      }
+    }
+    setRecoverStatus(recovered > 0 ? `Recovered ${recovered} of ${missing.length} items` : 'No local media found on this device')
+    setRecovering(false)
+    if (recovered > 0) loadData()
   }
 
   if (loading) {
@@ -191,6 +223,28 @@ export default function DayReviewPage() {
           </button>
         </div>
       </div>
+
+      {/* Recovery banner */}
+      {moments.some(m => !m.media_url) && (
+        <div className="px-4 mb-3">
+          <div className="bg-surface border border-[#2e2e2e] rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium text-white">Media not uploaded</p>
+              <p className="text-[10px] text-text-muted mt-0.5">
+                {recoverStatus ?? 'Open on the device you recorded on to recover'}
+              </p>
+            </div>
+            <button
+              onClick={recoverMedia}
+              disabled={recovering}
+              className="flex-shrink-0 flex items-center gap-1.5 bg-brand-teal/10 border border-brand-teal rounded-full px-2.5 py-1 disabled:opacity-50"
+            >
+              <RefreshCw size={11} className={`text-brand-teal ${recovering ? 'animate-spin' : ''}`} />
+              <span className="text-[10px] text-brand-teal font-medium">{recovering ? 'Recovering…' : 'Recover'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Moments grid */}
       <div className="px-4 pb-10">

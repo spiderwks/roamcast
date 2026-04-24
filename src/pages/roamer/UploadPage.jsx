@@ -86,6 +86,9 @@ export default function UploadPage() {
           if (!storageErr) {
             mediaUrl = path
             await db.mediaBlobs.where('momentId').equals(m.id).delete()
+          } else {
+            console.error('[upload] storage error:', m.id, storageErr)
+            throw new Error(storageErr.message)
           }
         }
 
