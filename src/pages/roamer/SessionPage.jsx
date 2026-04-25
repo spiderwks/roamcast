@@ -47,7 +47,28 @@ export default function SessionPage() {
 
   const loadMapData = useCallback(async () => {
     if (!session) return
-    const moments = await db.moments.where('dayId').equals(session.dayId).toArray()
+    let moments = await db.moments.where('dayId').equals(session.dayId).toArray()
+
+    // IndexedDB was cleared (iOS eviction) — fall back to Supabase
+    if (moments.length === 0) {
+      const { data } = await supabase.from('moments').select('*').eq('day_id', session.dayId)
+      if (data?.length) {
+        moments = data.map(m => ({
+          id: m.id,
+          dayId: m.day_id,
+          type: m.type,
+          title: m.title,
+          note: m.note,
+          lat: m.lat,
+          lng: m.lng,
+          capturedAt: new Date(m.captured_at).getTime(),
+          duration_seconds: m.duration_seconds,
+          uploaded: true,
+          media_url: m.media_url,
+        }))
+      }
+    }
+
     setLocalMoments(moments)
   }, [session])
 
@@ -77,6 +98,10 @@ export default function SessionPage() {
           if (rec && !cancelled) {
             const blob = rec.data ? new Blob([rec.data], { type: rec.mimeType }) : rec.blob
             thumbs[m.id] = URL.createObjectURL(blob)
+          } else if (m.media_url && !cancelled) {
+            // Blob cleared from IndexedDB — load thumbnail from Supabase Storage
+            const { data } = await supabase.storage.from('media').createSignedUrl(m.media_url, 3600)
+            if (data?.signedUrl) thumbs[m.id] = data.signedUrl
           }
         }
       }
@@ -84,7 +109,7 @@ export default function SessionPage() {
     })()
     return () => {
       cancelled = true
-      Object.values(prev).forEach(url => URL.revokeObjectURL(url))
+      Object.values(prev).forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url) })
     }
   }, [localMoments])
 

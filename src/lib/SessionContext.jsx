@@ -56,7 +56,11 @@ export function SessionProvider({ children }) {
     if (data?.session_start && !data?.session_end) {
       const s = { dayId: data.id, dayNumber: data.day_number, startTime: new Date(data.session_start).getTime(), tripId, startLat: data.start_lat ?? null, startLng: data.start_lng ?? null }
       persist(s)
-      const count = await db.moments.where('dayId').equals(data.id).count()
+      let count = await db.moments.where('dayId').equals(data.id).count()
+      if (count === 0) {
+        const { count: remote } = await supabase.from('moments').select('id', { count: 'exact', head: true }).eq('day_id', data.id)
+        count = remote ?? 0
+      }
       setMomentCount(count)
     } else {
       if (session?.tripId === tripId) clear()
