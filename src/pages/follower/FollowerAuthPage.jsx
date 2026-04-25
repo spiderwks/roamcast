@@ -38,7 +38,16 @@ export default function FollowerAuthPage() {
       email: trimmed,
       options: { shouldCreateUser: true },
     })
-    if (error) { setError(error.message); setLoading(false); return }
+    if (error) {
+      const msg = error.message?.toLowerCase() ?? ''
+      if (msg.includes('rate limit') || msg.includes('sending') || msg.includes('email')) {
+        setError('Having trouble sending the code right now. Please try again in a few minutes.')
+      } else {
+        setError(error.message)
+      }
+      setLoading(false)
+      return
+    }
     setStep('otp')
     setDigits(Array(6).fill(''))
     setLoading(false)
