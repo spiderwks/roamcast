@@ -79,6 +79,13 @@ export default function MomentCapturePage() {
     })
   }, [])
 
+  // Wire live stream to preview element once it mounts (recording=true causes re-render)
+  useEffect(() => {
+    if (recording && previewVideoRef.current && streamRef.current) {
+      previewVideoRef.current.srcObject = streamRef.current
+    }
+  }, [recording])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -128,11 +135,6 @@ export default function MomentCapturePage() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
-
-      // Show live preview for video
-      if (mode === 'video' && previewVideoRef.current) {
-        previewVideoRef.current.srcObject = stream
-      }
 
       const mimeType = mode === 'video'
         ? (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4')
