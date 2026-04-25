@@ -70,6 +70,7 @@ export default function MomentCapturePage() {
   const timerRef = useRef(null)
   const photoInputRef = useRef(null)
   const streamRef = useRef(null)
+  const previewVideoRef = useRef(null)
 
   // Pre-fetch GPS on mount
   useEffect(() => {
@@ -128,6 +129,11 @@ export default function MomentCapturePage() {
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
 
+      // Show live preview for video
+      if (mode === 'video' && previewVideoRef.current) {
+        previewVideoRef.current.srcObject = stream
+      }
+
       const mimeType = mode === 'video'
         ? (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4')
         : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4')
@@ -136,6 +142,7 @@ export default function MomentCapturePage() {
       chunksRef.current = []
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
+        if (previewVideoRef.current) previewVideoRef.current.srcObject = null
         const blob = new Blob(chunksRef.current, { type: mimeType })
         setMediaBlob(blob)
         setMediaURL(URL.createObjectURL(blob))
@@ -288,28 +295,46 @@ export default function MomentCapturePage() {
 
           {/* VIDEO MODE */}
           {mode === 'video' && (
-            <div className="flex flex-col items-center justify-center gap-3 py-8 bg-[#001a10]">
+            <div className="relative bg-[#001a10]">
               {mediaURL ? (
-                <video src={mediaURL} controls className="w-full" style={{ maxHeight: 200 }} />
+                <video src={mediaURL} controls playsInline className="w-full" style={{ maxHeight: 240 }} />
+              ) : recording ? (
+                /* Live preview with overlaid controls */
+                <div className="relative">
+                  <video
+                    ref={previewVideoRef}
+                    autoPlay
+                    muted
+                    playsInline
+                    className="w-full"
+                    style={{ maxHeight: 240, background: '#000' }}
+                  />
+                  {/* Timer badge */}
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 rounded-full px-2.5 py-1">
+                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <span className="text-[12px] text-white font-medium tabular-nums">{recordingTime}s / {MAX_DURATION}s</span>
+                  </div>
+                  {/* Stop button */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                    <button
+                      onClick={stopRecording}
+                      className="w-14 h-14 rounded-full border-2 border-red-500 bg-black/50 flex items-center justify-center"
+                    >
+                      <Square size={20} className="text-red-500" fill="currentColor" />
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <>
-                  {recording && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                      <span className="text-[12px] text-white font-medium">{recordingTime}s / {MAX_DURATION}s</span>
-                    </div>
-                  )}
+                /* Pre-record state */
+                <div className="flex flex-col items-center justify-center gap-3 py-10">
                   <button
-                    onClick={recording ? stopRecording : startRecording}
-                    className={`w-16 h-16 rounded-full border-2 flex items-center justify-center ${recording ? 'border-red-500 bg-red-500/10' : 'border-moment-video bg-moment-video/10'}`}
+                    onClick={startRecording}
+                    className="w-16 h-16 rounded-full border-2 border-moment-video bg-moment-video/10 flex items-center justify-center"
                   >
-                    {recording
-                      ? <Square size={20} className="text-red-500" fill="currentColor" />
-                      : <Video size={22} className="text-moment-video" />
-                    }
+                    <Video size={22} className="text-moment-video" />
                   </button>
-                  <span className="text-[11px] text-text-muted">{recording ? 'Recording… tap to stop' : 'Tap to record (max 30s)'}</span>
-                </>
+                  <span className="text-[11px] text-text-muted">Tap to record (max 30s)</span>
+                </div>
               )}
             </div>
           )}
