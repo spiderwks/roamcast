@@ -32,7 +32,6 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
-  // Look up the most recent unused, unexpired code for this email
   const { data: otpRow, error: queryError } = await adminClient
     .from('follower_otp_codes')
     .select('id, code, expires_at')
@@ -51,59 +50,45 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  console.log(`[verify-otp] found row:`, otpRow ? `code=${otpRow.code} expires=${otpRow.expires_at}` : 'none')
+  console.log(`[verify-otp] found row:`, otpRow ? `code=${otpRow.code}` : 'none')
 
   if (!otpRow) {
-    return new Response(JSON.stringify({ error: 'No valid code found for this email — request a new one' }), {
+    return new Response(JSON.stringify({ error: 'No valid code found — request a new one' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     })
   }
 
   if (otpRow.code !== code) {
-    console.log(`[verify-otp] code mismatch: expected=${otpRow.code} got=${code}`)
+    console.log(`[verify-otp] mismatch: expected=${otpRow.code} got=${code}`)
     return new Response(JSON.stringify({ error: 'Incorrect code — please check and try again' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     })
   }
 
-  // Mark code as used
+  // Mark code as used before generating session
   await adminClient.from('follower_otp_codes').update({ used: true }).eq('id', otpRow.id)
 
-  // Generate a real Supabase session via magic link
+  // Generate a magic link — the email_otp field is the raw token the client
+  // can pass to supabase.auth.verifyOtp() to create a real session
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
     type: 'magiclink',
     email,
     options: { shouldCreateUser: true },
   })
 
-  if (linkError || !linkData?.properties?.action_link) {
+  if (linkError || !linkData?.properties?.email_otp) {
     console.error('[verify-otp] generateLink error:', linkError)
-    return new Response(JSON.stringify({ error: `Session error: ${linkError?.message ?? 'no action_link'}` }), {
+    return new Response(JSON.stringify({ error: `Session error: ${linkError?.message ?? 'no token returned'}` }), {
       status: 500,
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
     })
   }
 
-  // Extract tokens from the action link fragment
-  const actionLink = linkData.properties.action_link
-  console.log('[verify-otp] action_link obtained, extracting tokens')
+  console.log('[verify-otp] session token generated successfully')
 
-  const hash = actionLink.includes('#') ? actionLink.split('#')[1] : ''
-  const params = new URLSearchParams(hash)
-  const access_token = params.get('access_token')
-  const refresh_token = params.get('refresh_token')
-
-  if (!access_token || !refresh_token) {
-    console.error('[verify-otp] tokens missing from action_link. hash params:', hash.slice(0, 100))
-    return new Response(JSON.stringify({ error: 'Could not extract session tokens from magic link' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-    })
-  }
-
-  return new Response(JSON.stringify({ access_token, refresh_token }), {
+  return new Response(JSON.stringify({ email_otp: linkData.properties.email_otp }), {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',

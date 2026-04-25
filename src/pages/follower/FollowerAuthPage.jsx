@@ -87,16 +87,18 @@ export default function FollowerAuthPage() {
     setError(null)
     const { ok, status, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code })
     if (!ok) {
-      setError(`Error ${status}: ${verifyData?.error || 'Invalid or expired code'}`)
+      setError(verifyData?.error || `Error ${status}: verification failed`)
       setVerifying(false)
       return
     }
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: verifyData.access_token,
-      refresh_token: verifyData.refresh_token,
+    // Use the raw magic-link token to create a real Supabase session
+    const { error: sessionError } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: verifyData.email_otp,
+      type: 'magiclink',
     })
     if (sessionError) {
-      setError('Sign-in failed — please try again.')
+      setError(`Sign-in failed: ${sessionError.message}`)
       setVerifying(false)
       return
     }
