@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Video, Mic, Square, Trash2 } from 'lucide-react'
 import { db } from '../../lib/db'
@@ -8,8 +8,6 @@ import { useAuth } from '../../lib/AuthContext'
 
 const TYPE_EXT = { photo: 'jpg', video: 'webm', audio: 'webm' }
 
-// Upload a single moment to Supabase in the background after local save.
-// Failures are silent — the end-of-day upload page is the fallback.
 async function tryBackgroundUpload(momentId, m, userId) {
   try {
     const blobRec = await db.mediaBlobs.where('momentId').equals(momentId).first()
@@ -79,12 +77,42 @@ export default function MomentCapturePage() {
     })
   }, [])
 
-  // Wire live stream to preview element once it mounts (recording=true causes re-render)
+  // Start camera/mic stream as soon as the user switches to video or audio mode.
+  // This requests permission ONCE and keeps the stream alive for the whole session
+  // so subsequent recordings never trigger another permission prompt.
   useEffect(() => {
-    if (recording && previewVideoRef.current && streamRef.current) {
+    if (mode === 'photo') { stopStream(); return }
+
+    let cancelled = false
+    const constraints = mode === 'video'
+      ? { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true }
+      : { audio: true }
+
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(stream => {
+        if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+        streamRef.current = stream
+        // For video, attach to the always-present preview element
+        if (mode === 'video' && previewVideoRef.current) {
+          previewVideoRef.current.srcObject = stream
+        }
+      })
+      .catch(err => {
+        console.error('Media access denied:', err)
+      })
+
+    return () => {
+      cancelled = true
+      stopStream()
+    }
+  }, [mode])
+
+  // Re-attach stream to preview after "Discard and retake" clears mediaURL
+  useEffect(() => {
+    if (mode === 'video' && !mediaURL && previewVideoRef.current && streamRef.current) {
       previewVideoRef.current.srcObject = streamRef.current
     }
-  }, [recording])
+  }, [mediaURL])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -100,6 +128,7 @@ export default function MomentCapturePage() {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
     }
+    if (previewVideoRef.current) previewVideoRef.current.srcObject = null
   }
 
   function resetCapture() {
@@ -109,11 +138,20 @@ export default function MomentCapturePage() {
     setRecording(false)
     setRecordingTime(0)
     clearInterval(timerRef.current)
-    stopStream()
+    if (mediaRecorderRef.current?.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop() } catch {}
+    }
+    // Don't stop the stream — keep the viewfinder/mic alive for retake
   }
 
   function handleModeChange(newMode) {
-    resetCapture()
+    // stopStream is handled by the mode useEffect cleanup
+    setMediaBlob(null)
+    if (mediaURL) { URL.revokeObjectURL(mediaURL); setMediaURL(null) }
+    setPhotoFile(null)
+    setRecording(false)
+    setRecordingTime(0)
+    clearInterval(timerRef.current)
     setMode(newMode)
   }
 
@@ -129,12 +167,9 @@ export default function MomentCapturePage() {
   // ─── Video / Audio recording ──────────────
   async function startRecording() {
     try {
-      const constraints = mode === 'video'
-        ? { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true }
-        : { audio: true }
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
-      streamRef.current = stream
+      // Reuse existing stream — no new permission prompt
+      const stream = streamRef.current
+      if (!stream) return
 
       const mimeType = mode === 'video'
         ? (MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : 'video/mp4')
@@ -144,11 +179,10 @@ export default function MomentCapturePage() {
       chunksRef.current = []
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = () => {
-        if (previewVideoRef.current) previewVideoRef.current.srcObject = null
         const blob = new Blob(chunksRef.current, { type: mimeType })
         setMediaBlob(blob)
         setMediaURL(URL.createObjectURL(blob))
-        stopStream()
+        // Keep stream alive — don't call stopStream()
       }
 
       mediaRecorderRef.current = recorder
@@ -158,16 +192,12 @@ export default function MomentCapturePage() {
 
       timerRef.current = setInterval(() => {
         setRecordingTime(t => {
-          if (t + 1 >= MAX_DURATION) {
-            stopRecording()
-            return MAX_DURATION
-          }
+          if (t + 1 >= MAX_DURATION) { stopRecording(); return MAX_DURATION }
           return t + 1
         })
       }, 1000)
     } catch (err) {
-      alert('Could not access camera/microphone. Please check your permissions.')
-      console.error(err)
+      console.error('Recording failed:', err)
     }
   }
 
@@ -181,10 +211,7 @@ export default function MomentCapturePage() {
 
   // ─── Save moment ──────────────────────────
   async function saveMoment() {
-    if (!title.trim()) return
-    if (mode === 'photo' && !mediaBlob) return
-    if (mode !== 'photo' && !mediaBlob) return
-
+    if (!title.trim() || !mediaBlob) return
     if (!dayId || dayId === 'undefined') {
       setSaveError("Session not found. Go back and start today's session first.")
       return
@@ -194,9 +221,8 @@ export default function MomentCapturePage() {
     setSaveError(null)
     try {
       let coords = gpsCoords
-      if (!coords) {
-        try { coords = await getCurrentGPS() } catch (_) {}
-      }
+      if (!coords) { try { coords = await getCurrentGPS() } catch (_) {} }
+
       const momentId = crypto.randomUUID()
       const momentData = {
         id: momentId,
@@ -219,8 +245,6 @@ export default function MomentCapturePage() {
       }
 
       navigate(-1)
-
-      // Back up to Supabase immediately — if this fails the end-of-day upload is the fallback
       if (user) tryBackgroundUpload(momentId, momentData, user.id).catch(() => {})
     } catch (err) {
       console.error('Save failed:', err)
@@ -230,7 +254,7 @@ export default function MomentCapturePage() {
   }
 
   const cfg = MODE_CONFIG[mode]
-  const canSave = title.trim().length > 0 && (mediaBlob !== null)
+  const canSave = title.trim().length > 0 && mediaBlob !== null
 
   return (
     <div className="flex flex-col h-full bg-surface-deep">
@@ -276,9 +300,7 @@ export default function MomentCapturePage() {
           {mode === 'photo' && (
             <>
               {mediaURL ? (
-                <div className="relative">
-                  <img src={mediaURL} alt="captured" className="w-full object-cover" style={{ maxHeight: 240 }} />
-                </div>
+                <img src={mediaURL} alt="captured" className="w-full object-cover" style={{ maxHeight: 240 }} />
               ) : (
                 <button
                   onClick={() => photoInputRef.current?.click()}
@@ -295,13 +317,12 @@ export default function MomentCapturePage() {
             </>
           )}
 
-          {/* VIDEO MODE */}
+          {/* VIDEO MODE — live viewfinder always visible, controls overlaid */}
           {mode === 'video' && (
-            <div className="relative bg-[#001a10]">
+            <div className="relative bg-black">
               {mediaURL ? (
-                <video src={mediaURL} controls playsInline className="w-full" style={{ maxHeight: 240 }} />
-              ) : recording ? (
-                /* Live preview with overlaid controls */
+                <video src={mediaURL} controls playsInline className="w-full" style={{ maxHeight: 280 }} />
+              ) : (
                 <div className="relative">
                   <video
                     ref={previewVideoRef}
@@ -309,33 +330,34 @@ export default function MomentCapturePage() {
                     muted
                     playsInline
                     className="w-full"
-                    style={{ maxHeight: 240, background: '#000' }}
+                    style={{ minHeight: 220, background: '#000' }}
                   />
-                  {/* Timer badge */}
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 rounded-full px-2.5 py-1">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <span className="text-[12px] text-white font-medium tabular-nums">{recordingTime}s / {MAX_DURATION}s</span>
-                  </div>
-                  {/* Stop button */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
-                    <button
-                      onClick={stopRecording}
-                      className="w-14 h-14 rounded-full border-2 border-red-500 bg-black/50 flex items-center justify-center"
-                    >
-                      <Square size={20} className="text-red-500" fill="currentColor" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Pre-record state */
-                <div className="flex flex-col items-center justify-center gap-3 py-10">
-                  <button
-                    onClick={startRecording}
-                    className="w-16 h-16 rounded-full border-2 border-moment-video bg-moment-video/10 flex items-center justify-center"
-                  >
-                    <Video size={22} className="text-moment-video" />
-                  </button>
-                  <span className="text-[11px] text-text-muted">Tap to record (max 30s)</span>
+                  {recording ? (
+                    <>
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/60 rounded-full px-2.5 py-1">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[12px] text-white font-medium tabular-nums">{recordingTime}s / {MAX_DURATION}s</span>
+                      </div>
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+                        <button
+                          onClick={stopRecording}
+                          className="w-14 h-14 rounded-full border-2 border-red-500 bg-black/50 flex items-center justify-center"
+                        >
+                          <Square size={20} className="text-red-500" fill="currentColor" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5">
+                      <button
+                        onClick={startRecording}
+                        className="w-14 h-14 rounded-full border-2 border-moment-video bg-black/50 flex items-center justify-center"
+                      >
+                        <Video size={22} className="text-moment-video" />
+                      </button>
+                      <span className="text-[10px] text-white/60">Tap to record · max {MAX_DURATION}s</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -349,23 +371,22 @@ export default function MomentCapturePage() {
               ) : (
                 <>
                   {recording && (
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-2 h-2 rounded-full bg-moment-audio animate-pulse" />
-                      <span className="text-[12px] text-moment-audio font-medium">{recordingTime}s / {MAX_DURATION}s</span>
-                    </div>
-                  )}
-                  {/* Simple waveform visualization */}
-                  {recording && (
-                    <div className="flex items-center gap-0.5 h-8 mb-1">
-                      {Array.from({ length: 20 }).map((_, i) => (
-                        <div key={i} className="w-1 bg-moment-audio rounded-full animate-pulse"
-                          style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${i * 50}ms` }} />
-                      ))}
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-moment-audio animate-pulse" />
+                        <span className="text-[12px] text-moment-audio font-medium">{recordingTime}s / {MAX_DURATION}s</span>
+                      </div>
+                      <div className="flex items-center gap-0.5 h-8">
+                        {Array.from({ length: 20 }).map((_, i) => (
+                          <div key={i} className="w-1 bg-moment-audio rounded-full animate-pulse"
+                            style={{ height: `${20 + Math.random() * 60}%`, animationDelay: `${i * 50}ms` }} />
+                        ))}
+                      </div>
+                    </>
                   )}
                   <button
                     onClick={recording ? stopRecording : startRecording}
-                    className={`w-16 h-16 rounded-full border-2 flex items-center justify-center ${recording ? 'border-moment-audio bg-moment-audio/10' : 'border-moment-audio bg-moment-audio/10'}`}
+                    className="w-16 h-16 rounded-full border-2 border-moment-audio bg-moment-audio/10 flex items-center justify-center"
                   >
                     {recording
                       ? <Square size={20} className="text-moment-audio" fill="currentColor" />
@@ -421,9 +442,7 @@ export default function MomentCapturePage() {
 
       {/* Save CTA */}
       <div className="px-4 pb-6 pt-4">
-        {saveError && (
-          <p className="text-red-400 text-[11px] text-center mb-3">{saveError}</p>
-        )}
+        {saveError && <p className="text-red-400 text-[11px] text-center mb-3">{saveError}</p>}
         {!mediaBlob && !saving && (
           <p className="text-text-disabled text-[11px] text-center mb-2">
             {mode === 'photo' ? 'Take a photo first' : `Record ${mode} first`}
