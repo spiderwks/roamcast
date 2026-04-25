@@ -3,6 +3,18 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import Logo from '../../components/Logo'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+
+async function callEdgeFn(path, body) {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const json = await res.json().catch(() => ({}))
+  return { ok: res.ok, status: res.status, data: json }
+}
+
 export default function FollowerAuthPage() {
   const { tripId } = useParams()
   const [searchParams] = useSearchParams()
@@ -34,15 +46,11 @@ export default function FollowerAuthPage() {
     if (!trimmed) return
     setLoading(true)
     setError(null)
-    const { error } = await supabase.auth.signInWithOtp({
-      email: trimmed,
-      options: { shouldCreateUser: true },
-    })
-    if (error) {
-      // Supabase sometimes returns an error even though the OTP was dispatched.
-      // Always advance to the code entry step — if nothing was sent, the verify
-      // call will surface the real error.
-      console.warn('[OTP] signInWithOtp error (advancing anyway):', error.message)
+    const { ok, data } = await callEdgeFn('send-follower-otp', { email: trimmed })
+    if (!ok) {
+      setError(data?.error || 'Failed to send code — please try again.')
+      setLoading(false)
+      return
     }
     setStep('otp')
     setDigits(Array(6).fill(''))
@@ -52,9 +60,11 @@ export default function FollowerAuthPage() {
 
   async function resendOTP() {
     setResent(false)
-    await supabase.auth.signInWithOtp({ email: email.trim(), options: { shouldCreateUser: true } })
-    setResent(true)
-    setTimeout(() => setResent(false), 3000)
+    const { ok } = await callEdgeFn('send-follower-otp', { email: email.trim() })
+    if (ok) {
+      setResent(true)
+      setTimeout(() => setResent(false), 3000)
+    }
   }
 
   function handleDigitInput(i, value) {
@@ -111,20 +121,26 @@ export default function FollowerAuthPage() {
     if (otp.length < 6) return
     setVerifying(true)
     setError(null)
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: email.trim(), token: otp, type: 'email',
-    })
-    if (error) {
+    const { ok, data } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code: otp })
+    if (!ok) {
       setError('Invalid or expired code — try again.')
       setVerifying(false)
       return
     }
-    if (data.session) {
-      await supabase.from('followers').upsert(
-        { trip_id: tripId, email: email.trim() },
-        { onConflict: 'trip_id,email', ignoreDuplicates: true }
-      )
+    // Set the session from tokens returned by the edge function
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    })
+    if (sessionError) {
+      setError('Sign-in failed — please try again.')
+      setVerifying(false)
+      return
     }
+    await supabase.from('followers').upsert(
+      { trip_id: tripId, email: email.trim().toLowerCase() },
+      { onConflict: 'trip_id,email', ignoreDuplicates: true }
+    )
     navigate(`/follow/${tripId}/view`, { replace: true })
   }
 
