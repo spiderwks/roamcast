@@ -4,11 +4,16 @@ import { supabase } from '../../lib/supabase'
 import Logo from '../../components/Logo'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 async function callEdgeFn(path, body) {
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
     body: JSON.stringify(body),
   })
   const json = await res.json().catch(() => ({}))
