@@ -3,6 +3,41 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Camera, Video, Mic, Square, Trash2 } from 'lucide-react'
 import { db } from '../../lib/db'
 import { getCurrentGPS } from '../../hooks/useGPS'
+import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
+
+const TYPE_EXT = { photo: 'jpg', video: 'webm', audio: 'webm' }
+
+// Upload a single moment to Supabase in the background after local save.
+// Failures are silent — the end-of-day upload page is the fallback.
+async function tryBackgroundUpload(momentId, m, userId) {
+  try {
+    const blobRec = await db.mediaBlobs.where('momentId').equals(momentId).first()
+    if (!blobRec) return
+    const uploadBlob = blobRec.data
+      ? new Blob([blobRec.data], { type: blobRec.mimeType })
+      : blobRec.blob
+    const ext = TYPE_EXT[m.type] || 'bin'
+    const path = `${userId}/${m.dayId}/${momentId}.${ext}`
+    const { error } = await supabase.storage.from('media').upload(path, uploadBlob, { upsert: true })
+    if (error) return
+    await supabase.from('moments').upsert({
+      id: momentId,
+      day_id: m.dayId,
+      type: m.type,
+      title: m.title,
+      note: m.note || null,
+      lat: m.lat,
+      lng: m.lng,
+      captured_at: new Date(m.capturedAt).toISOString(),
+      duration_seconds: m.duration_seconds || null,
+      media_url: path,
+    })
+    await db.moments.update(momentId, { uploaded: true })
+  } catch {
+    // end-of-day upload handles it
+  }
+}
 
 const MAX_DURATION = 30
 const MODES = ['photo', 'video', 'audio']
@@ -16,6 +51,7 @@ const MODE_CONFIG = {
 export default function MomentCapturePage() {
   const { tripId, dayId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [mode, setMode] = useState('photo')
   const [title, setTitle] = useState('')
   const [note, setNote] = useState('')
@@ -153,8 +189,7 @@ export default function MomentCapturePage() {
         try { coords = await getCurrentGPS() } catch (_) {}
       }
       const momentId = crypto.randomUUID()
-
-      await db.moments.add({
+      const momentData = {
         id: momentId,
         dayId,
         type: mode,
@@ -165,7 +200,9 @@ export default function MomentCapturePage() {
         capturedAt: Date.now(),
         duration_seconds: mode !== 'photo' ? recordingTime : null,
         uploaded: false,
-      })
+      }
+
+      await db.moments.add(momentData)
 
       if (mediaBlob) {
         const data = await mediaBlob.arrayBuffer()
@@ -173,6 +210,9 @@ export default function MomentCapturePage() {
       }
 
       navigate(-1)
+
+      // Back up to Supabase immediately — if this fails the end-of-day upload is the fallback
+      if (user) tryBackgroundUpload(momentId, momentData, user.id).catch(() => {})
     } catch (err) {
       console.error('Save failed:', err)
       setSaveError(err?.message || 'Failed to save moment. Please try again.')

@@ -72,6 +72,13 @@ export default function UploadPage() {
     for (let i = 0; i < moments.length; i++) {
       const itemIdx = i + 1
       const m = moments[i]
+
+      // Already synced by background upload during capture — skip
+      if (m.uploaded) {
+        patchItem(itemIdx, { status: S.done })
+        continue
+      }
+
       patchItem(itemIdx, { status: S.uploading })
 
       try {
