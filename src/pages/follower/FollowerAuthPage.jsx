@@ -28,16 +28,14 @@ export default function FollowerAuthPage() {
 
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState('')
-  const [digits, setDigits] = useState(Array(6).fill(''))
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState(null)
   const [checking, setChecking] = useState(true)
-  const [pasted, setPasted] = useState(false)
   const [resent, setResent] = useState(false)
 
-  const digitRefs = useRef(Array.from({ length: 6 }, () => null))
-  const otp = digits.join('')
+  const otpRef = useRef(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -58,9 +56,9 @@ export default function FollowerAuthPage() {
       return
     }
     setStep('otp')
-    setDigits(Array(6).fill(''))
+    setOtp('')
     setLoading(false)
-    setTimeout(() => digitRefs.current[0]?.focus(), 120)
+    setTimeout(() => otpRef.current?.focus(), 120)
   }
 
   async function resendOTP() {
@@ -72,70 +70,30 @@ export default function FollowerAuthPage() {
     }
   }
 
-  function handleDigitInput(i, value) {
-    const char = value.replace(/\D/g, '').slice(-1)
-    const next = [...digits]
-    next[i] = char
-    setDigits(next)
+  function handleOtpChange(e) {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 6)
+    setOtp(val)
     setError(null)
-    if (char && i < 5) digitRefs.current[i + 1]?.focus()
-  }
-
-  function handleDigitKeyDown(i, e) {
-    if (e.key === 'Backspace') {
-      if (digits[i]) {
-        const next = [...digits]; next[i] = ''; setDigits(next)
-      } else if (i > 0) {
-        const next = [...digits]; next[i - 1] = ''; setDigits(next)
-        digitRefs.current[i - 1]?.focus()
-      }
-    } else if (e.key === 'ArrowLeft' && i > 0) {
-      digitRefs.current[i - 1]?.focus()
-    } else if (e.key === 'ArrowRight' && i < 5) {
-      digitRefs.current[i + 1]?.focus()
-    }
-  }
-
-  function handleDigitPaste(e) {
-    e.preventDefault()
-    const code = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (!code) return
-    const next = Array(6).fill('')
-    code.split('').forEach((c, i) => { next[i] = c })
-    setDigits(next)
-    setPasted(true)
-    setTimeout(() => setPasted(false), 2000)
-    digitRefs.current[Math.min(code.length, 5)]?.focus()
-  }
-
-  async function pasteFromClipboard() {
-    try {
-      const text = await navigator.clipboard.readText()
-      const code = text.replace(/\D/g, '').slice(0, 6)
-      if (!code) return
-      const next = Array(6).fill('')
-      code.split('').forEach((c, i) => { next[i] = c })
-      setDigits(next)
-      setPasted(true)
-      setTimeout(() => setPasted(false), 2000)
-      digitRefs.current[Math.min(code.length, 5)]?.focus()
-    } catch {}
+    if (val.length === 6) verifyOTPCode(val)
   }
 
   async function verifyOTP() {
     if (otp.length < 6) return
+    verifyOTPCode(otp)
+  }
+
+  async function verifyOTPCode(code) {
     setVerifying(true)
     setError(null)
-    const { ok, data } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code: otp })
+    const { ok, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code })
     if (!ok) {
       setError('Invalid or expired code — try again.')
       setVerifying(false)
       return
     }
-    // Set the session from tokens returned by the edge function
     const { error: sessionError } = await supabase.auth.setSession({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token,
+      access_token: verifyData.access_token,
+      refresh_token: verifyData.refresh_token,
     })
     if (sessionError) {
       setError('Sign-in failed — please try again.')
@@ -202,57 +160,26 @@ export default function FollowerAuthPage() {
             <h1 className="text-[20px] font-bold text-white text-center leading-snug mb-0.5">
               Enter the code sent to
             </h1>
-            <p className="text-[14px] text-white font-semibold text-center mb-7">{email}</p>
+            <p className="text-[14px] text-white font-semibold text-center mb-8">{email}</p>
 
-            {/* Digit boxes */}
-            <div className="mb-4">
-              <p className="text-[10px] uppercase tracking-widest text-white mb-3">6-digit code</p>
-              <div className="flex gap-2">
-                {digits.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={el => { digitRefs.current[i] = el }}
-                    type="text"
-                    inputMode="numeric"
-                    value={d}
-                    onChange={e => handleDigitInput(i, e.target.value)}
-                    onKeyDown={e => handleDigitKeyDown(i, e)}
-                    onPaste={handleDigitPaste}
-                    maxLength={2}
-                    className={`flex-1 h-14 text-center text-[22px] font-bold bg-[#111] border rounded-xl text-white outline-none transition-colors ${
-                      d ? 'border-brand-teal' : 'border-[#2a2a2a]'
-                    } focus:border-brand-teal`}
-                  />
-                ))}
-              </div>
+            <div className="mb-5">
+              <label className="block text-[10px] uppercase tracking-widest text-white mb-3">
+                6-digit code
+              </label>
+              <input
+                ref={otpRef}
+                type="text"
+                inputMode="numeric"
+                value={otp}
+                onChange={handleOtpChange}
+                onKeyDown={e => e.key === 'Enter' && verifyOTP()}
+                placeholder="Enter 6-digit code"
+                maxLength={6}
+                autoComplete="one-time-code"
+                style={{ fontSize: '16px' }}
+                className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-4 text-center font-bold tracking-[0.5em] text-white placeholder-[#444] focus:border-brand-teal outline-none transition-colors placeholder:tracking-normal"
+              />
             </div>
-
-            {/* Paste button */}
-            <button
-              onClick={pasteFromClipboard}
-              className={`w-full border rounded-xl py-3.5 flex items-center justify-center gap-2 mb-3 text-[13px] transition-colors ${
-                pasted
-                  ? 'bg-brand-teal/10 border-brand-teal text-brand-teal'
-                  : 'bg-[#111] border-[#2a2a2a] text-text-muted'
-              }`}
-            >
-              {pasted ? (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Code pasted successfully
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                  Paste code from email
-                </>
-              )}
-            </button>
 
             {error && <p className="text-[11px] text-red-400 text-center mb-3">{error}</p>}
 
