@@ -78,11 +78,14 @@ export default function UploadPage() {
         let mediaUrl = null
         const blobRec = await db.mediaBlobs.where('momentId').equals(m.id).first()
         if (blobRec) {
+          const uploadBlob = blobRec.data
+            ? new Blob([blobRec.data], { type: blobRec.mimeType })
+            : blobRec.blob
           const ext = TYPE_EXT[m.type] || 'bin'
           const path = `${user.id}/${day.id}/${m.id}.${ext}`
           const { error: storageErr } = await supabase.storage
             .from('media')
-            .upload(path, blobRec.data ? new Blob([blobRec.data], { type: blobRec.mimeType }) : blobRec.blob, { upsert: true })
+            .upload(path, uploadBlob, { upsert: true })
           if (!storageErr) {
             mediaUrl = path
             await db.mediaBlobs.where('momentId').equals(m.id).delete()
@@ -117,6 +120,12 @@ export default function UploadPage() {
       upload_status: 'complete',
       uploaded_at: new Date().toISOString(),
     }).eq('id', day.id)
+
+    // ── 4. Notify followers (fires after upload so stats are in DB) ──
+    const { data: tripData } = await supabase.from('trips').select('name').eq('id', tripId).single()
+    supabase.functions.invoke('notify-followers', {
+      body: { tripId, event: 'end', dayNumber: day.day_number, tripName: tripData?.name ?? '' },
+    }).catch(() => {})
 
     setPhase('done')
   }

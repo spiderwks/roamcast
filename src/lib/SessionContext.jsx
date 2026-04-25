@@ -105,12 +105,6 @@ export function SessionProvider({ children }) {
       .update({ session_end: new Date().toISOString(), duration_seconds: elapsed, distance_miles: distanceMi })
       .eq('id', session.dayId)
 
-    // Notify followers — fire and forget
-    const { data: tripData } = await supabase.from('trips').select('name').eq('id', session.tripId).single()
-    supabase.functions.invoke('notify-followers', {
-      body: { tripId: session.tripId, event: 'end', dayNumber: session.dayNumber, tripName: tripData?.name ?? '' },
-    }).catch(() => {})
-
     clear()
   }
 
