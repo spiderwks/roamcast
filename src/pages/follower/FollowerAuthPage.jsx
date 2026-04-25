@@ -39,20 +39,10 @@ export default function FollowerAuthPage() {
       options: { shouldCreateUser: true },
     })
     if (error) {
-      const msg = error.message?.toLowerCase() ?? ''
-      // Supabase sometimes returns an email-sending error even though the OTP
-      // was dispatched successfully. Advance to the code entry step anyway so
-      // the user can enter the code they received instead of retrying and
-      // generating duplicate emails.
-      if (msg.includes('sending') || msg.includes('email') || msg.includes('magic link')) {
-        setStep('otp')
-        setDigits(Array(6).fill(''))
-        setLoading(false)
-        return
-      }
-      setError(error.message)
-      setLoading(false)
-      return
+      // Supabase sometimes returns an error even though the OTP was dispatched.
+      // Always advance to the code entry step — if nothing was sent, the verify
+      // call will surface the real error.
+      console.warn('[OTP] signInWithOtp error (advancing anyway):', error.message)
     }
     setStep('otp')
     setDigits(Array(6).fill(''))
