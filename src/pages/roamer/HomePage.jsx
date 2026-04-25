@@ -171,12 +171,6 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {loadError && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                <p className="text-[10px] text-red-400 font-mono break-all">{loadError}</p>
-              </div>
-            )}
-
             {trips.active ? (
               <ActiveTripCard trip={trips.active} onStartSession={handleStartSession} onViewHistory={handleViewHistory} starting={starting} />
             ) : (

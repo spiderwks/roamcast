@@ -26,6 +26,19 @@
     outline: none;
   }
 
+  /* Prevent iOS Safari from zooming in on focused inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="number"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
