@@ -148,7 +148,7 @@ export default function FollowerAuthPage() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-2">
+                <label className="block text-[10px] uppercase tracking-widest text-white mb-2">
                   Your email
                 </label>
                 <input
@@ -180,7 +180,7 @@ export default function FollowerAuthPage() {
 
             {/* Digit boxes */}
             <div className="mb-4">
-              <p className="text-[10px] uppercase tracking-widest text-text-muted mb-3">6-digit code</p>
+              <p className="text-[10px] uppercase tracking-widest text-white mb-3">6-digit code</p>
               <div className="flex gap-2">
                 {digits.map((d, i) => (
                   <input

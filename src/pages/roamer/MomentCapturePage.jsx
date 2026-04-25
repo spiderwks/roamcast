@@ -362,7 +362,7 @@ export default function MomentCapturePage() {
 
         {/* Title */}
         <div>
-          <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">
+          <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">
             Title <span className={cfg.color}>*</span>
           </label>
           <input
@@ -378,7 +378,7 @@ export default function MomentCapturePage() {
         {/* Note */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[10px] uppercase tracking-widest text-text-muted">Note</label>
+            <label className="text-[10px] uppercase tracking-widest text-white">Note</label>
             <span className="text-[9px] text-text-disabled">Optional</span>
           </div>
           <textarea

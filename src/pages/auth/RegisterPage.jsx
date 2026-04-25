@@ -36,19 +36,19 @@ export default function RegisterPage() {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">Full name</label>
+            <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Full name</label>
             <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} required autoComplete="name"
               className="w-full bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
               placeholder="Alex Rivera" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">Email</label>
+            <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email"
               className="w-full bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
               placeholder="you@example.com" />
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">Password</label>
+            <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="new-password"
               className="w-full bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
               placeholder="Min. 8 characters" />

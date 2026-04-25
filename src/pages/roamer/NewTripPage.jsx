@@ -32,14 +32,14 @@ function StepDetails({ form, setForm }) {
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">Trip name <span className="text-brand-teal">*</span></label>
+        <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Trip name <span className="text-brand-teal">*</span></label>
         <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} maxLength={100}
           className="w-full bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
           placeholder="e.g. Camino de Santiago 2026" />
       </div>
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[10px] uppercase tracking-widest text-text-muted">Description</label>
+          <label className="text-[10px] uppercase tracking-widest text-white">Description</label>
           <span className="text-[9px] text-text-disabled">Optional</span>
         </div>
         <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} maxLength={200} rows={3}
@@ -48,7 +48,7 @@ function StepDetails({ form, setForm }) {
         <div className="text-right text-[9px] text-text-disabled mt-1">{form.description.length} / 200</div>
       </div>
       <div>
-        <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-2">Adventure type</label>
+        <label className="block text-[10px] uppercase tracking-widest text-white mb-2">Adventure type</label>
         <div className="grid grid-cols-2 gap-2">
           {ADVENTURE_TYPES.map(({ id, label, Icon }) => {
             const selected = form.adventure_type === id
@@ -67,11 +67,11 @@ function StepDetails({ form, setForm }) {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-[9px] uppercase tracking-widest text-text-muted mb-1.5">Start date</label>
+          <label className="block text-[9px] uppercase tracking-widest text-white mb-1.5">Start date</label>
           <input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} className="w-full bg-surface border border-border rounded-sm px-3 py-2.5 text-[12px] font-bold text-[#ccc] focus:border-brand-teal transition-colors" />
         </div>
         <div>
-          <label className="block text-[9px] uppercase tracking-widest text-text-muted mb-1.5">End date</label>
+          <label className="block text-[9px] uppercase tracking-widest text-white mb-1.5">End date</label>
           <input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} className="w-full bg-surface border border-border rounded-sm px-3 py-2.5 text-[12px] font-bold text-[#ccc] focus:border-brand-teal transition-colors" />
         </div>
       </div>
@@ -92,7 +92,7 @@ function StepFollowers({ form, setForm }) {
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">Invite followers</label>
+        <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Invite followers</label>
         <div className="flex gap-2">
           <input type="email" value={emailInput} onChange={e => { setEmailInput(e.target.value); setError('') }}
             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addFollower())}
