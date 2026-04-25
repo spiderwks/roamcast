@@ -121,6 +121,12 @@ export default function UploadPage() {
       uploaded_at: new Date().toISOString(),
     }).eq('id', day.id)
 
+    // ── 4. Notify followers (fires after upload so stats are in DB) ──
+    const { data: tripData } = await supabase.from('trips').select('name').eq('id', tripId).single()
+    supabase.functions.invoke('notify-followers', {
+      body: { tripId, event: 'end', dayNumber: day.day_number, tripName: tripData?.name ?? '' },
+    }).catch(() => {})
+
     setPhase('done')
   }
 
