@@ -51,9 +51,9 @@ export default function FollowerAuthPage() {
     if (!trimmed) return
     setLoading(true)
     setError(null)
-    const { ok, data } = await callEdgeFn('send-follower-otp', { email: trimmed })
+    const { ok, status, data } = await callEdgeFn('send-follower-otp', { email: trimmed })
     if (!ok) {
-      setError(data?.error || 'Failed to send code — please try again.')
+      setError(`Error ${status}: ${data?.error || data?.message || JSON.stringify(data) || 'Failed to send code'}`)
       setLoading(false)
       return
     }
