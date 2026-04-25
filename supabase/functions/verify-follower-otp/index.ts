@@ -15,12 +15,11 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  let email: string, code: string, tripId: string
+  let email: string, code: string
   try {
     const body = await req.json()
     email = (body.email ?? '').trim().toLowerCase()
     code = (body.code ?? '').trim()
-    tripId = (body.tripId ?? '').trim()
   } catch {
     return new Response(JSON.stringify({ error: 'Invalid request body' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
   }
@@ -72,12 +71,11 @@ Deno.serve(async (req: Request) => {
   // Mark code as used
   await adminClient.from('follower_otp_codes').update({ used: true }).eq('id', otpRow.id)
 
-  const redirectTo = tripId ? `${APP_URL}/follow/${tripId}/view` : APP_URL
-
+  // Generate magic link with redirectTo pointing to our app
   const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
     type: 'magiclink',
     email,
-    options: { shouldCreateUser: true, redirectTo },
+    options: { shouldCreateUser: true, redirectTo: APP_URL },
   })
 
   if (linkError || !linkData?.properties?.action_link) {
@@ -88,9 +86,33 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  console.log('[verify-otp] action_link generated, redirectTo:', redirectTo)
+  // Follow the magic link server-side (redirect: manual) to extract the
+  // access_token and refresh_token from the redirect Location header —
+  // this avoids any client-side external navigation that breaks iOS PWA
+  const verifyRes = await fetch(linkData.properties.action_link, {
+    method: 'GET',
+    redirect: 'manual',
+  })
 
-  return new Response(JSON.stringify({ action_link: linkData.properties.action_link }), {
+  const location = verifyRes.headers.get('location') ?? ''
+  console.log(`[verify-otp] redirect status=${verifyRes.status} location prefix=${location.slice(0, 80)}`)
+
+  const fragment = location.includes('#') ? location.split('#')[1] : ''
+  const params = new URLSearchParams(fragment)
+  const access_token = params.get('access_token')
+  const refresh_token = params.get('refresh_token')
+
+  if (!access_token || !refresh_token) {
+    console.error('[verify-otp] tokens not in fragment. full location:', location.slice(0, 200))
+    return new Response(JSON.stringify({ error: 'Could not extract session tokens from auth server' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    })
+  }
+
+  console.log('[verify-otp] session tokens extracted successfully')
+
+  return new Response(JSON.stringify({ access_token, refresh_token }), {
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
