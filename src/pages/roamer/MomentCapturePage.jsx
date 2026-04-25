@@ -294,13 +294,13 @@ export default function MomentCapturePage() {
 
       <div className="flex-1 overflow-y-auto px-4 space-y-4">
         {/* Capture area */}
-        <div className={`w-full rounded-lg border ${cfg.border} overflow-hidden`} style={{ minHeight: 160 }}>
+        <div className={`w-full rounded-lg border ${cfg.border} overflow-hidden`}>
 
           {/* PHOTO MODE */}
           {mode === 'photo' && (
             <>
               {mediaURL ? (
-                <img src={mediaURL} alt="captured" className="w-full object-cover" style={{ maxHeight: 240 }} />
+                <img src={mediaURL} alt="captured" className="w-full object-cover" style={{ maxHeight: 180 }} />
               ) : (
                 <button
                   onClick={() => photoInputRef.current?.click()}
@@ -321,16 +321,16 @@ export default function MomentCapturePage() {
           {mode === 'video' && (
             <div className="relative bg-black">
               {mediaURL ? (
-                <video src={mediaURL} controls playsInline className="w-full" style={{ maxHeight: 280 }} />
+                <video src={mediaURL} controls playsInline className="w-full" style={{ maxHeight: 180 }} />
               ) : (
-                <div className="relative">
+                <div className="relative" style={{ height: 180 }}>
                   <video
                     ref={previewVideoRef}
                     autoPlay
                     muted
                     playsInline
-                    className="w-full"
-                    style={{ minHeight: 220, background: '#000' }}
+                    className="w-full h-full object-cover"
+                    style={{ background: '#000' }}
                   />
                   {recording ? (
                     <>
