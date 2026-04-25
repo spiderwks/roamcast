@@ -85,9 +85,9 @@ export default function FollowerAuthPage() {
   async function verifyOTPCode(code) {
     setVerifying(true)
     setError(null)
-    const { ok, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code })
+    const { ok, status, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code })
     if (!ok) {
-      setError('Invalid or expired code — try again.')
+      setError(`Error ${status}: ${verifyData?.error || 'Invalid or expired code'}`)
       setVerifying(false)
       return
     }
