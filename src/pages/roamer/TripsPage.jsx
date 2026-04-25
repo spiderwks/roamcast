@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Mountain, Footprints, Bike, Waves, Ship, Car, Play, CheckCircle, MoreVertical, X, Trash2, Pencil } from 'lucide-react'
+import { Plus, Mountain, Footprints, Bike, Waves, Ship, Car, Play, CheckCircle, MoreVertical, X, Trash2, Pencil, Users } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 
@@ -190,6 +190,13 @@ export default function TripsPage() {
               >
                 <Pencil size={16} className="text-brand-teal flex-shrink-0" />
                 <span className="text-[13px] font-medium text-white">Edit trip</span>
+              </button>
+              <button
+                onClick={() => { setMenuTrip(null); navigate(`/trips/${menuTrip.id}/followers`) }}
+                className="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl bg-surface border border-border text-left"
+              >
+                <Users size={16} className="text-brand-teal flex-shrink-0" />
+                <span className="text-[13px] font-medium text-white">Manage followers</span>
               </button>
               <button
                 onClick={() => openDelete(menuTrip)}

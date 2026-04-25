@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Copy, Check, Users, Trash2, Link } from 'lucide-react'
+import { ArrowLeft, Copy, Check, Users, Trash2, Link, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 export default function FollowersPage() {
@@ -11,6 +11,10 @@ export default function FollowersPage() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [removing, setRemoving] = useState(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteError, setInviteError] = useState('')
+  const [inviting, setInviting] = useState(false)
+  const [inviteSent, setInviteSent] = useState(false)
 
   const shareUrl = `${window.location.origin}/follow/${tripId}?name=${encodeURIComponent(tripName)}`
 
@@ -52,6 +56,28 @@ export default function FollowersPage() {
     await supabase.from('followers').delete().eq('id', id)
     setFollowers(f => f.filter(x => x.id !== id))
     setRemoving(null)
+  }
+
+  async function inviteFollower() {
+    const email = inviteEmail.trim().toLowerCase()
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      setInviteError('Enter a valid email address'); return
+    }
+    if (followers.some(f => f.email === email)) {
+      setInviteError('This email is already following'); return
+    }
+    setInviting(true)
+    setInviteError('')
+    const { error } = await supabase.from('followers').insert({ trip_id: tripId, email })
+    if (error) {
+      setInviteError('Could not add follower. Please try again.')
+    } else {
+      setInviteEmail('')
+      setInviteSent(true)
+      setTimeout(() => setInviteSent(false), 2500)
+      await loadData()
+    }
+    setInviting(false)
   }
 
   return (
@@ -97,9 +123,35 @@ export default function FollowersPage() {
         </div>
       </div>
 
+      {/* Add by email */}
+      <div className="px-4 mb-4">
+        <p className="text-[10px] uppercase tracking-widest text-white mb-2">Add follower by email</p>
+        <div className="flex gap-2">
+          <input
+            type="email"
+            value={inviteEmail}
+            onChange={e => { setInviteEmail(e.target.value); setInviteError('') }}
+            onKeyDown={e => e.key === 'Enter' && inviteFollower()}
+            placeholder="follower@email.com"
+            className="flex-1 bg-surface border border-border rounded-lg px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
+          />
+          <button
+            onClick={inviteFollower}
+            disabled={inviting || !inviteEmail.trim()}
+            className={`px-4 rounded-lg font-bold text-[13px] transition-colors disabled:opacity-40 flex items-center gap-1.5 ${
+              inviteSent ? 'bg-brand-teal/20 border border-brand-teal text-brand-teal' : 'bg-brand-teal text-white'
+            }`}
+          >
+            {inviteSent ? <Check size={15} /> : <Plus size={15} />}
+            {inviteSent ? 'Added' : inviting ? '…' : 'Add'}
+          </button>
+        </div>
+        {inviteError && <p className="text-red-400 text-[11px] mt-1.5">{inviteError}</p>}
+      </div>
+
       {/* Followers list */}
       <div className="flex-1 overflow-y-auto px-4 pb-6">
-        <p className="text-[10px] font-medium uppercase tracking-widest text-text-muted mb-3">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-white mb-3">
           Following · {followers.length}
         </p>
 
