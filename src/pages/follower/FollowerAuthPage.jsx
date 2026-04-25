@@ -40,11 +40,17 @@ export default function FollowerAuthPage() {
     })
     if (error) {
       const msg = error.message?.toLowerCase() ?? ''
-      if (msg.includes('rate limit') || msg.includes('sending') || msg.includes('email')) {
-        setError('Having trouble sending the code right now. Please try again in a few minutes.')
-      } else {
-        setError(error.message)
+      // Supabase sometimes returns an email-sending error even though the OTP
+      // was dispatched successfully. Advance to the code entry step anyway so
+      // the user can enter the code they received instead of retrying and
+      // generating duplicate emails.
+      if (msg.includes('sending') || msg.includes('email') || msg.includes('magic link')) {
+        setStep('otp')
+        setDigits(Array(6).fill(''))
+        setLoading(false)
+        return
       }
+      setError(error.message)
       setLoading(false)
       return
     }
