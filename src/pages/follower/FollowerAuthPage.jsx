@@ -85,28 +85,20 @@ export default function FollowerAuthPage() {
   async function verifyOTPCode(code) {
     setVerifying(true)
     setError(null)
-    const { ok, status, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code })
+    const { ok, status, data: verifyData } = await callEdgeFn('verify-follower-otp', { email: email.trim(), code, tripId })
     if (!ok) {
       setError(verifyData?.error || `Error ${status}: verification failed`)
       setVerifying(false)
       return
     }
-    // Use the raw magic-link token to create a real Supabase session
-    const { error: sessionError } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: verifyData.email_otp,
-      type: 'magiclink',
-    })
-    if (sessionError) {
-      setError(`Sign-in failed: ${sessionError.message}`)
-      setVerifying(false)
-      return
-    }
+    // Upsert follower record before redirecting
     await supabase.from('followers').upsert(
       { trip_id: tripId, email: email.trim().toLowerCase() },
       { onConflict: 'trip_id,email', ignoreDuplicates: true }
     )
-    navigate(`/follow/${tripId}/view`, { replace: true })
+    // Navigate to Supabase's magic link — the auth server creates the session
+    // and redirects back to the follower view with tokens in the URL fragment
+    window.location.href = verifyData.action_link
   }
 
   if (checking) {
