@@ -49,16 +49,21 @@ export default function FollowerAuthPage() {
     if (!trimmed) return
     setLoading(true)
     setError(null)
-    const { ok, status, data } = await callEdgeFn('send-follower-otp', { email: trimmed })
-    if (!ok) {
-      setError(`Error ${status}: ${data?.error || data?.message || JSON.stringify(data) || 'Failed to send code'}`)
+    try {
+      const { ok, status, data } = await callEdgeFn('send-follower-otp', { email: trimmed })
+      if (!ok) {
+        setError(`Error ${status}: ${data?.error || data?.message || JSON.stringify(data) || 'Failed to send code'}`)
+        setLoading(false)
+        return
+      }
+      setStep('otp')
+      setOtp('')
       setLoading(false)
-      return
+      setTimeout(() => otpRef.current?.focus(), 120)
+    } catch (e) {
+      setError(`Network error: ${e.message}`)
+      setLoading(false)
     }
-    setStep('otp')
-    setOtp('')
-    setLoading(false)
-    setTimeout(() => otpRef.current?.focus(), 120)
   }
 
   async function resendOTP() {
