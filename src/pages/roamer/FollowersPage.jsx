@@ -233,8 +233,8 @@ export default function FollowersPage() {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-medium text-white truncate">{f.email}</p>
-                      <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-[12px] font-medium text-white truncate mb-0.5">{f.email}</p>
+                      <div className="flex items-center gap-4">
                         <p className="text-[10px] text-text-muted">
                           {accepted && f.last_viewed_at
                             ? `Last viewed ${new Date(f.last_viewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
