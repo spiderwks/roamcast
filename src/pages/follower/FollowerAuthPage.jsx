@@ -96,13 +96,13 @@ export default function FollowerAuthPage() {
       setVerifying(false)
       return
     }
-    // Set the session directly from tokens returned by the edge function
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: verifyData.access_token,
-      refresh_token: verifyData.refresh_token,
+    // Exchange the hashed token for a real session via the Supabase auth client
+    const { data: sessionData, error: sessionError } = await supabase.auth.verifyOtp({
+      token_hash: verifyData.token_hash,
+      type: 'magiclink',
     })
-    if (sessionError) {
-      setError(`Sign-in failed: ${sessionError.message}`)
+    if (sessionError || !sessionData?.session) {
+      setError(`Sign-in failed: ${sessionError?.message || 'No session returned'}`)
       setVerifying(false)
       return
     }

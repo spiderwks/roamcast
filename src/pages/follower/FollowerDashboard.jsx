@@ -56,6 +56,7 @@ export default function FollowerDashboard() {
   const [noAccess, setNoAccess] = useState(false)
   const [lastRefresh, setLastRefresh] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [mapOpen, setMapOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -235,12 +236,20 @@ export default function FollowerDashboard() {
           {/* Map */}
           {pathPoints.length > 0 && (
             <div className="px-4 mb-4">
-              <MiniMap
-                points={pathPoints}
-                moments={moments}
-                className="h-[160px]"
-                showStartStop
-              />
+              <button
+                className="w-full relative rounded-lg overflow-hidden active:opacity-80 transition-opacity"
+                onClick={() => setMapOpen(true)}
+              >
+                <MiniMap
+                  points={pathPoints}
+                  moments={moments}
+                  className="h-[160px]"
+                  showStartStop
+                />
+                <div className="absolute bottom-2 right-2 bg-black/60 rounded-md px-2 py-1">
+                  <span className="text-[10px] text-white font-medium">Tap to expand</span>
+                </div>
+              </button>
             </div>
           )}
 
@@ -295,6 +304,34 @@ export default function FollowerDashboard() {
           <span className="text-[9px] text-text-disabled bg-surface-deep/90 px-2.5 py-1 rounded-full border border-[#1e1e1e]">
             Updated {lastRefresh.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
           </span>
+        </div>
+      )}
+
+      {/* Fullscreen map modal */}
+      {mapOpen && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-between px-4 pt-5 pb-3 flex-shrink-0">
+            <p className="text-[13px] font-bold text-white">Route map</p>
+            <button
+              onClick={() => setMapOpen(false)}
+              className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center"
+            >
+              <X size={15} className="text-text-secondary" />
+            </button>
+          </div>
+          <div className="flex-1">
+            <MiniMap
+              points={pathPoints}
+              moments={moments}
+              className="h-full rounded-none"
+              interactive
+              showStartStop
+              onMomentClick={id => {
+                const m = moments.find(m => m.id === id)
+                if (m) { setMapOpen(false); setSelectedMoment(m) }
+              }}
+            />
+          </div>
         </div>
       )}
 
