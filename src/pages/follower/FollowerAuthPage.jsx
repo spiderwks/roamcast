@@ -101,10 +101,10 @@ export default function FollowerAuthPage() {
       setVerifying(false)
       return
     }
-    await supabase.from('followers').upsert(
-      { trip_id: tripId, email: email.trim().toLowerCase() },
-      { onConflict: 'trip_id,email', ignoreDuplicates: true }
-    )
+    await supabase.from('followers')
+      .update({ accepted_at: new Date().toISOString() })
+      .eq('trip_id', tripId)
+      .eq('email', email.trim().toLowerCase())
     navigate(`/follow/${tripId}/view`, { replace: true })
   }
 
