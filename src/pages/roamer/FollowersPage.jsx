@@ -233,22 +233,22 @@ export default function FollowersPage() {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-[12px] font-medium text-white truncate">{f.email}</p>
+                      <p className="text-[12px] font-medium text-white truncate">{f.email}</p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-[10px] text-text-muted">
+                          {accepted && f.last_viewed_at
+                            ? `Last viewed ${new Date(f.last_viewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                            : accepted
+                            ? `Joined ${new Date(f.accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                            : `Invited ${new Date(f.invited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                          }
+                        </p>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                           accepted ? 'bg-brand-teal/10 text-brand-teal' : 'bg-amber-500/10 text-amber-500'
                         }`}>
                           {accepted ? 'Accepted' : 'Pending'}
                         </span>
                       </div>
-                      <p className="text-[10px] text-text-muted mt-0.5">
-                        {accepted && f.last_viewed_at
-                          ? `Last viewed ${new Date(f.last_viewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                          : accepted
-                          ? `Joined ${new Date(f.accepted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                          : `Invited ${new Date(f.invited_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                        }
-                      </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {!accepted && (
