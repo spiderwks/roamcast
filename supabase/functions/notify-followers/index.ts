@@ -110,28 +110,6 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
 </body></html>`
 }
 
-function buildStartEmail(p: { name: string; tripName: string; dayNumber: number; viewUrl: string }): string {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Day ${p.dayNumber} is live — ${p.tripName}</title></head>
-<body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0d0d;padding:32px 16px"><tr><td align="center">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
-  <tr><td style="padding:0 0 28px"><span style="font-size:19px;font-weight:900;color:#fff">roam<span style="color:#1D9E75">cast</span></span></td></tr>
-  <tr><td style="padding:0 0 24px">
-    <p style="margin:0 0 8px;font-size:14px;color:#777">Hi ${p.name},</p>
-    <h1 style="margin:0 0 14px;font-size:24px;font-weight:800;color:#fff;line-height:1.25">Day ${p.dayNumber} of ${p.tripName} has started</h1>
-    <p style="margin:0;font-size:14px;color:#888;line-height:1.7">Check back after the session ends to see photos, videos, and the route.</p>
-  </td></tr>
-  <tr><td style="padding:0 0 32px">
-    <a href="${p.viewUrl}" style="display:block;background:#1D9E75;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Follow along →</a>
-  </td></tr>
-  <tr><td style="padding:20px 0 0;border-top:1px solid #1e1e1e;text-align:center">
-    <p style="margin:0;font-size:11px;color:#444"><a href="#" style="color:#1D9E75;text-decoration:none">Unsubscribe</a></p>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>`
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
@@ -148,7 +126,7 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return new Response('Unauthorized', { status: 401 })
 
-  const { tripId, event, dayNumber, tripName } = await req.json()
+  const { tripId, dayNumber, tripName } = await req.json()
 
   const { data: trip } = await userClient.from('trips').select('id, adventure_type').eq('id', tripId).eq('roamer_id', user.id).single()
   if (!trip) return new Response('Forbidden', { status: 403 })
@@ -158,30 +136,23 @@ Deno.serve(async (req: Request) => {
   if (!followers?.length) return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json' } })
 
   const viewUrl = `${APP_URL}/follow/${tripId}/view`
-  const isEnd = event === 'end'
-  const subject = isEnd ? `Day ${dayNumber} recap is ready — ${tripName}` : `Day ${dayNumber} is live — ${tripName}`
+  const subject = `Day ${dayNumber} recap is ready — ${tripName}`
 
+  const { data: day } = await adminClient.from('days').select('id, distance_miles, duration_seconds').eq('trip_id', tripId).eq('day_number', dayNumber).single()
   let distanceKm = '0.0', duration = '0m', momentCount = 0, svgChart = ''
-
-  if (isEnd) {
-    const { data: day } = await adminClient.from('days').select('id, distance_miles, duration_seconds').eq('trip_id', tripId).eq('day_number', dayNumber).single()
-    if (day) {
-      distanceKm = ((day.distance_miles ?? 0) * 1.60934).toFixed(1)
-      duration = formatDuration(day.duration_seconds ?? 0)
-      const { count } = await adminClient.from('moments').select('id', { count: 'exact', head: true }).eq('day_id', day.id)
-      momentCount = count ?? 0
-      const { data: track } = await adminClient.from('gps_tracks').select('points').eq('day_id', day.id).single()
-      svgChart = generateRouteSVG(track?.points ?? null)
-    }
+  if (day) {
+    distanceKm = ((day.distance_miles ?? 0) * 1.60934).toFixed(1)
+    duration = formatDuration(day.duration_seconds ?? 0)
+    const { count } = await adminClient.from('moments').select('id', { count: 'exact', head: true }).eq('day_id', day.id)
+    momentCount = count ?? 0
+    const { data: track } = await adminClient.from('gps_tracks').select('points').eq('day_id', day.id).single()
+    svgChart = generateRouteSVG(track?.points ?? null)
   }
 
   let sent = 0
   for (const f of followers) {
     const name = getFirstName(f.email)
-    const html = isEnd
-      ? buildEndEmail({ name, tripName, dayNumber, distanceKm, duration, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
-      : buildStartEmail({ name, tripName, dayNumber, viewUrl })
-
+    const html = buildEndEmail({ name, tripName, dayNumber, distanceKm, duration, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },

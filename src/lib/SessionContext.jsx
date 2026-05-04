@@ -93,12 +93,6 @@ export function SessionProvider({ children }) {
     setElapsed(0)
     setMomentCount(0)
 
-    // Notify followers — fire and forget
-    const { data: tripData } = await supabase.from('trips').select('name').eq('id', tripId).single()
-    supabase.functions.invoke('notify-followers', {
-      body: { tripId, event: 'start', dayNumber, tripName: tripData?.name ?? '' },
-    }).catch(() => {})
-
     return day
   }
 
