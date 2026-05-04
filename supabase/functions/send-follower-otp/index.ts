@@ -14,7 +14,7 @@ function buildOtpEmail(code: string): string {
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px">
 
   <tr><td style="padding:0 0 28px">
-    <span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px">roam<span style="color:#14b8a6">cast</span></span>
+    <span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px">roam<span style="color:#1D9E75">cast</span></span>
   </td></tr>
 
   <tr><td style="padding:0 0 28px">
@@ -23,7 +23,7 @@ function buildOtpEmail(code: string): string {
 
     <table width="100%" cellpadding="0" cellspacing="0" border="0">
       <tr><td align="center" style="padding:24px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px">
-        <span style="font-size:40px;font-weight:900;color:#14b8a6;letter-spacing:12px">${code}</span>
+        <span style="font-size:40px;font-weight:900;color:#1D9E75;letter-spacing:12px">${code}</span>
       </td></tr>
     </table>
   </td></tr>

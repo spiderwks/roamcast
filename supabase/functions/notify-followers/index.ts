@@ -16,7 +16,7 @@ function formatDuration(secs: number): string {
 }
 
 function generateRouteSVG(points: any[] | null): string {
-  const fallback = `<svg width="100%" height="56" viewBox="0 0 460 56" xmlns="http://www.w3.org/2000/svg"><path d="M0,46 C80,36 160,18 230,22 C300,26 380,8 460,4" stroke="#14b8a6" stroke-width="2" fill="none" opacity="0.7" stroke-linecap="round"/><circle cx="58" cy="40" r="4" fill="#f59e0b"/><circle cx="230" cy="22" r="4" fill="#14b8a6"/><circle cx="390" cy="7" r="4" fill="#f59e0b"/></svg>`
+  const fallback = `<svg width="100%" height="56" viewBox="0 0 460 56" xmlns="http://www.w3.org/2000/svg"><path d="M0,46 C80,36 160,18 230,22 C300,26 380,8 460,4" stroke="#1D9E75" stroke-width="2" fill="none" opacity="0.7" stroke-linecap="round"/><circle cx="58" cy="40" r="4" fill="#f59e0b"/><circle cx="230" cy="22" r="4" fill="#1D9E75"/><circle cx="390" cy="7" r="4" fill="#f59e0b"/></svg>`
   if (!points || points.length < 3) return fallback
   try {
     const lats = points.map((p: any) => p.lat)
@@ -33,9 +33,9 @@ function generateRouteSVG(points: any[] | null): string {
     const [mx, my] = coords[mid].split(',')
     const [ex, ey] = coords[coords.length - 1].split(',')
     return `<svg width="100%" height="56" viewBox="0 0 460 56" xmlns="http://www.w3.org/2000/svg">
-      <polyline points="${coords.join(' ')}" stroke="#14b8a6" stroke-width="2" fill="none" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
+      <polyline points="${coords.join(' ')}" stroke="#1D9E75" stroke-width="2" fill="none" opacity="0.8" stroke-linejoin="round" stroke-linecap="round"/>
       <circle cx="${mx}" cy="${my}" r="4" fill="#f59e0b"/>
-      <circle cx="${ex}" cy="${ey}" r="5" fill="#14b8a6"/>
+      <circle cx="${ex}" cy="${ey}" r="5" fill="#1D9E75"/>
     </svg>`
   } catch { return fallback }
 }
@@ -46,12 +46,12 @@ const ADVENTURE_LABELS: Record<string, string> = {
 }
 
 const ADVENTURE_ICON: Record<string, string> = {
-  hiking:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 8 5-5 5 15H2L8 3z"/></svg>`,
-  walking: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 22l1-8-3-3 3-5h6l3 5-3 3 1 8"/></svg>`,
-  cycling: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17V7l-7 10h14L12 7"/></svg>`,
-  water:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
-  cruise:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15H6l-3 6h18l-3-6z"/><path d="M12 3v12M8 9l4-6 4 6"/></svg>`,
-  driving: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="8" width="22" height="10" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v3"/><circle cx="7" cy="18" r="1"/><circle cx="17" cy="18" r="1"/></svg>`,
+  hiking:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 8 5-5 5 15H2L8 3z"/></svg>`,
+  walking: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 22l1-8-3-3 3-5h6l3 5-3 3 1 8"/></svg>`,
+  cycling: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17V7l-7 10h14L12 7"/></svg>`,
+  water:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  cruise:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15H6l-3 6h18l-3-6z"/><path d="M12 3v12M8 9l4-6 4 6"/></svg>`,
+  driving: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="8" width="22" height="10" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v3"/><circle cx="7" cy="18" r="1"/><circle cx="17" cy="18" r="1"/></svg>`,
 }
 
 function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; distanceKm: string; duration: string; momentCount: number; adventureType: string; svgChart: string; viewUrl: string }): string {
@@ -63,7 +63,7 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
 
   <tr><td style="padding:0 0 28px">
-    <span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px">roam<span style="color:#14b8a6">cast</span></span>
+    <span style="font-size:19px;font-weight:900;color:#fff;letter-spacing:-0.5px">roam<span style="color:#1D9E75">cast</span></span>
   </td></tr>
 
   <tr><td style="padding:0 0 24px">
@@ -76,7 +76,7 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px">
       <tr>
         <td width="64" valign="middle" style="padding:20px 0 16px 20px">
-          <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background:#0a2218;border:1px solid #14b8a6;border-radius:10px;text-align:center;vertical-align:middle">${icon}</td></tr></table>
+          <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background:#0a2218;border:1px solid #1D9E75;border-radius:10px;text-align:center;vertical-align:middle">${icon}</td></tr></table>
         </td>
         <td valign="middle" style="padding:20px 20px 16px 12px">
           <p style="margin:0;font-size:15px;font-weight:700;color:#fff">${p.tripName}</p>
@@ -85,7 +85,7 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
       </tr>
       <tr><td colspan="2" style="padding:0 20px 18px">
         <table cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#14b8a6">${p.distanceKm}km</span><br><span style="font-size:11px;color:#555">walked</span></td>
+          <td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceKm}km</span><br><span style="font-size:11px;color:#555">walked</span></td>
           <td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
           <td><span style="font-size:14px;font-weight:700;color:#fff">${p.duration}</span><br><span style="font-size:11px;color:#555">on trail</span></td>
         </tr></table>
@@ -97,12 +97,12 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
   </td></tr>
 
   <tr><td style="padding:0 0 32px">
-    <a href="${p.viewUrl}" style="display:block;background:#14b8a6;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Watch Day ${p.dayNumber} on Roamcast</a>
+    <a href="${p.viewUrl}" style="display:block;background:#1D9E75;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Watch Day ${p.dayNumber} on Roamcast</a>
   </td></tr>
 
   <tr><td style="padding:20px 0 0;border-top:1px solid #1e1e1e;text-align:center">
     <p style="margin:0 0 8px;font-size:11px;color:#444;line-height:1.6">You're following this trip because you were added as a follower.</p>
-    <p style="margin:0;font-size:11px;color:#444"><a href="#" style="color:#14b8a6;text-decoration:none">Unsubscribe</a></p>
+    <p style="margin:0;font-size:11px;color:#444"><a href="#" style="color:#1D9E75;text-decoration:none">Unsubscribe</a></p>
   </td></tr>
 
 </table>
@@ -115,17 +115,17 @@ function buildStartEmail(p: { name: string; tripName: string; dayNumber: number;
 <body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0d0d;padding:32px 16px"><tr><td align="center">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
-  <tr><td style="padding:0 0 28px"><span style="font-size:19px;font-weight:900;color:#fff">roam<span style="color:#14b8a6">cast</span></span></td></tr>
+  <tr><td style="padding:0 0 28px"><span style="font-size:19px;font-weight:900;color:#fff">roam<span style="color:#1D9E75">cast</span></span></td></tr>
   <tr><td style="padding:0 0 24px">
     <p style="margin:0 0 8px;font-size:14px;color:#777">Hi ${p.name},</p>
     <h1 style="margin:0 0 14px;font-size:24px;font-weight:800;color:#fff;line-height:1.25">Day ${p.dayNumber} of ${p.tripName} has started</h1>
     <p style="margin:0;font-size:14px;color:#888;line-height:1.7">Check back after the session ends to see photos, videos, and the route.</p>
   </td></tr>
   <tr><td style="padding:0 0 32px">
-    <a href="${p.viewUrl}" style="display:block;background:#14b8a6;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Follow along →</a>
+    <a href="${p.viewUrl}" style="display:block;background:#1D9E75;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Follow along →</a>
   </td></tr>
   <tr><td style="padding:20px 0 0;border-top:1px solid #1e1e1e;text-align:center">
-    <p style="margin:0;font-size:11px;color:#444"><a href="#" style="color:#14b8a6;text-decoration:none">Unsubscribe</a></p>
+    <p style="margin:0;font-size:11px;color:#444"><a href="#" style="color:#1D9E75;text-decoration:none">Unsubscribe</a></p>
   </td></tr>
 </table>
 </td></tr></table>
