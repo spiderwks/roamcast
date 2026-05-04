@@ -15,6 +15,7 @@ import UploadPage from './pages/roamer/UploadPage'
 import TripHistoryPage from './pages/roamer/TripHistoryPage'
 import DayReviewPage from './pages/roamer/DayReviewPage'
 import FollowersPage from './pages/roamer/FollowersPage'
+import AllFollowersPage from './pages/roamer/AllFollowersPage'
 import FollowerAuthPage from './pages/follower/FollowerAuthPage'
 import FollowerDashboard from './pages/follower/FollowerDashboard'
 
@@ -54,6 +55,7 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="trips" element={<TripsPage />} />
           <Route path="trips/new" element={<NewTripPage />} />
+          <Route path="followers" element={<AllFollowersPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
 
