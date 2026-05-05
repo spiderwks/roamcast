@@ -26,7 +26,7 @@ export default function FollowerAuthPage() {
   const navigate = useNavigate()
   const tripName = searchParams.get('name') || 'this adventure'
 
-  const [step, setStep] = useState('email')
+  const [step, setStep] = useState('confirm')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
@@ -127,17 +127,32 @@ export default function FollowerAuthPage() {
         <Logo />
       </div>
 
-      <div className="flex-1">
-        {step === 'email' ? (
+      <div className="flex-1 flex flex-col">
+        {step === 'confirm' ? (
+          <>
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="inline-flex items-center gap-2 bg-brand-teal/10 border border-brand-teal/30 rounded-full px-3 py-1.5 mb-6 w-fit">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
+                <span className="text-[11px] text-brand-teal font-medium">You're invited</span>
+              </div>
+              <h1 className="text-[28px] font-bold text-white leading-tight mb-3">{tripName}</h1>
+              <p className="text-[14px] text-text-muted leading-relaxed mb-10">
+                Sign in to confirm your spot and start receiving daily updates from this trip.
+              </p>
+              <button
+                onClick={() => setStep('email')}
+                className="w-full bg-brand-teal text-white font-bold text-[14px] py-4 rounded-xl"
+              >
+                Sign in to follow →
+              </button>
+            </div>
+          </>
+        ) : step === 'email' ? (
           <>
             <div className="mb-8">
-              <div className="inline-flex items-center gap-2 bg-brand-teal/10 border border-brand-teal/30 rounded-full px-3 py-1.5 mb-5">
-                <div className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
-                <span className="text-[11px] text-brand-teal font-medium">Invite accepted</span>
-              </div>
-              <h1 className="text-[26px] font-bold text-white leading-tight mb-2">{tripName}</h1>
+              <h1 className="text-[22px] font-bold text-white leading-tight mb-2">Confirm your email</h1>
               <p className="text-[13px] text-text-muted leading-relaxed">
-                Confirm your email below and we'll send you a sign-in code — then you're all set to follow along.
+                We'll send a 6-digit code to sign you in. No password needed.
               </p>
             </div>
 
@@ -162,9 +177,8 @@ export default function FollowerAuthPage() {
                 disabled={loading || !email.trim()}
                 className="w-full bg-brand-teal text-white font-bold text-[14px] py-4 rounded-xl disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Sending…' : 'Confirm email →'}
+                {loading ? 'Sending…' : 'Send code →'}
               </button>
-              <p className="text-[11px] text-text-disabled text-center pt-1">No password needed — we'll email you a code</p>
             </div>
           </>
         ) : (
