@@ -158,7 +158,7 @@ export default function HomePage() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 pt-5 pb-3">
         <Logo />
-        <Avatar name={displayName} size={32} />
+        <button onClick={() => navigate('/profile')}><Avatar name={displayName} size={32} /></button>
       </div>
       <div className="px-4 mb-4">
         <p className="text-[10px] text-text-muted">{formatDate(new Date())}</p>
