@@ -9,7 +9,6 @@ export default function ProfilePage() {
   const { user, profile, signOut, loadProfile } = useAuth()
   const navigate = useNavigate()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Roamer'
-  const avatarUrl = profile?.avatar_url || null
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState('')
@@ -17,7 +16,10 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [avatarError, setAvatarError] = useState('')
+  const [localAvatarUrl, setLocalAvatarUrl] = useState(null)
   const fileInputRef = useRef(null)
+
+  const avatarSrc = localAvatarUrl || profile?.avatar_url || null
 
   function startEdit() {
     setNameInput(displayName)
@@ -52,18 +54,27 @@ export default function ProfilePage() {
     if (!file) return
     setUploadingAvatar(true)
     setAvatarError('')
-    const ext = file.name.split('.').pop()
-    const path = `${user.id}/avatar.${ext}`
+
+    // Show preview immediately
+    const preview = URL.createObjectURL(file)
+    setLocalAvatarUrl(preview)
+
+    const path = `${user.id}/avatar.jpg`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(path, file, { upsert: true, contentType: file.type })
+
     if (uploadError) {
       setAvatarError(uploadError.message)
+      setLocalAvatarUrl(null)
+      URL.revokeObjectURL(preview)
       setUploadingAvatar(false)
       return
     }
+
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`
+    await supabase.from('profiles').update({ avatar_url: urlWithCacheBust }).eq('id', user.id)
     await loadProfile(user.id)
     setUploadingAvatar(false)
   }
@@ -75,10 +86,9 @@ export default function ProfilePage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-deep px-6 pt-10 pb-6">
-      {/* Avatar + name */}
       <div className="flex flex-col items-center mb-8">
         <div className="relative">
-          <Avatar name={displayName} size={80} src={avatarUrl} />
+          <Avatar name={displayName} size={80} src={avatarSrc} />
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingAvatar}
