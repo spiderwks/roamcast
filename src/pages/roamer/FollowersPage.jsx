@@ -4,10 +4,12 @@ import { ArrowLeft, Copy, Check, Users, Trash2, Link, Plus, Mail } from 'lucide-
 import { supabase } from '../../lib/supabase'
 
 async function sendInviteEmail(tripId, tripName, email) {
-  const { error } = await supabase.functions.invoke('send-follower-invite', {
+  console.log('[invite] calling send-follower-invite', { tripId, tripName, email })
+  const { data, error } = await supabase.functions.invoke('send-follower-invite', {
     body: { tripId, tripName, email },
   })
-  if (error) console.error('sendInviteEmail error:', error)
+  if (error) console.error('[invite] error:', error)
+  else console.log('[invite] success:', data)
 }
 
 export default function FollowersPage() {
