@@ -5,10 +5,12 @@ import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 
 async function sendInviteEmail(tripId, tripName, email) {
-  const { error } = await supabase.functions.invoke('send-follower-invite', {
+  console.log('[invite] calling send-follower-invite', { tripId, tripName, email })
+  const { data, error } = await supabase.functions.invoke('send-follower-invite', {
     body: { tripId, tripName, email },
   })
-  if (error) console.error('sendInviteEmail error:', error)
+  if (error) console.error('[invite] error:', error)
+  else console.log('[invite] success:', data)
 }
 
 const ADVENTURE_TYPES = [
@@ -167,6 +169,7 @@ export default function NewTripPage() {
         .insert({ roamer_id: user.id, name: form.name.trim(), description: form.description.trim() || null, adventure_type: form.adventure_type, start_date: form.start_date || null, end_date: form.end_date || null, status: 'active' })
         .select().single()
       if (tripErr) throw tripErr
+      console.log('[trip] created:', trip.id, 'followers:', form.followers)
       if (form.followers.length > 0) {
         await supabase.from('followers').insert(form.followers.map(email => ({ trip_id: trip.id, email })))
         await Promise.all(form.followers.map(email => sendInviteEmail(trip.id, form.name.trim(), email)))
