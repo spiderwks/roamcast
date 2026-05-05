@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
   if (!trip) return new Response('Forbidden', { status: 403 })
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
-  const { data: followers } = await adminClient.from('followers').select('email, name').eq('trip_id', tripId)
+  const { data: followers } = await adminClient.from('followers').select('email, name').eq('trip_id', tripId).not('accepted_at', 'is', null)
   if (!followers?.length) return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json' } })
 
   const viewUrl = `${APP_URL}/follow/${tripId}/view`
