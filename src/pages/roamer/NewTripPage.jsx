@@ -169,10 +169,15 @@ export default function NewTripPage() {
         .insert({ roamer_id: user.id, name: form.name.trim(), description: form.description.trim() || null, adventure_type: form.adventure_type, start_date: form.start_date || null, end_date: form.end_date || null, status: 'active' })
         .select().single()
       if (tripErr) throw tripErr
-      console.log('[trip] created:', trip.id, 'followers:', form.followers)
       if (form.followers.length > 0) {
-        await supabase.from('followers').insert(form.followers.map(email => ({ trip_id: trip.id, email })))
-        await Promise.all(form.followers.map(email => sendInviteEmail(trip.id, form.name.trim(), email)))
+        // Insert one at a time so a duplicate doesn't block the whole batch
+        const inserted = []
+        for (const email of form.followers) {
+          const { error: fErr } = await supabase.from('followers').insert({ trip_id: trip.id, email })
+          if (!fErr) inserted.push(email)
+          else console.warn('[trip] follower insert skipped:', email, fErr.message)
+        }
+        await Promise.all(inserted.map(email => sendInviteEmail(trip.id, form.name.trim(), email)))
       }
       navigate('/')
     } catch (err) {
