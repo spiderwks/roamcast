@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser()
   if (authError || !user) return new Response('Unauthorized', { status: 401 })
 
-  const { tripId, tripName, email } = await req.json()
+  const { tripId, tripName, email, name: providedName } = await req.json()
   if (!tripId || !tripName || !email) {
     return new Response(JSON.stringify({ error: 'tripId, tripName and email required' }), { status: 400 })
   }
@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
   const { data: trip } = await userClient.from('trips').select('id').eq('id', tripId).eq('roamer_id', user.id).single()
   if (!trip) return new Response('Forbidden', { status: 403 })
 
-  const name = getFirstName(email)
+  const name = providedName?.trim() || getFirstName(email)
   const inviteUrl = `${APP_URL}/follow/${tripId}?name=${encodeURIComponent(tripName)}`
 
   const res = await fetch('https://api.resend.com/emails', {

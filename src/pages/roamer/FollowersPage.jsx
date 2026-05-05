@@ -3,10 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Copy, Check, Users, Trash2, Link, Plus, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-async function sendInviteEmail(tripId, tripName, email) {
-  console.log('[invite] calling send-follower-invite', { tripId, tripName, email })
+async function sendInviteEmail(tripId, tripName, email, name) {
   const { data, error } = await supabase.functions.invoke('send-follower-invite', {
-    body: { tripId, tripName, email },
+    body: { tripId, tripName, email, name },
   })
   if (error) console.error('[invite] error:', error)
   else console.log('[invite] success:', data)
@@ -20,6 +19,7 @@ export default function FollowersPage() {
   const [loading, setLoading] = useState(true)
   const [copied, setCopied] = useState(false)
   const [removing, setRemoving] = useState(null)
+  const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteError, setInviteError] = useState('')
   const [inviting, setInviting] = useState(false)
@@ -35,7 +35,7 @@ export default function FollowersPage() {
     const [{ data: trip }, { data: followersData }] = await Promise.all([
       supabase.from('trips').select('name').eq('id', tripId).single(),
       supabase.from('followers')
-        .select('id, email, invited_at, last_viewed_at, accepted_at')
+        .select('id, email, name, invited_at, last_viewed_at, accepted_at')
         .eq('trip_id', tripId)
         .order('invited_at', { ascending: false }),
     ])
@@ -70,7 +70,9 @@ export default function FollowersPage() {
   }
 
   async function inviteFollower() {
+    const name = inviteName.trim()
     const email = inviteEmail.trim().toLowerCase()
+    if (!name) { setInviteError('Enter a first name'); return }
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
       setInviteError('Enter a valid email address'); return
     }
@@ -79,13 +81,14 @@ export default function FollowersPage() {
     }
     setInviting(true)
     setInviteError('')
-    const { error } = await supabase.from('followers').insert({ trip_id: tripId, email })
+    const { error } = await supabase.from('followers').insert({ trip_id: tripId, email, name })
     if (error) {
       setInviteError('Could not add follower. Please try again.')
       setInviting(false)
       return
     }
-    await sendInviteEmail(tripId, tripName, email)
+    await sendInviteEmail(tripId, tripName, email, name)
+    setInviteName('')
     setInviteEmail('')
     setInviteSent(true)
     setTimeout(() => setInviteSent(false), 2500)
@@ -95,7 +98,7 @@ export default function FollowersPage() {
 
   async function resendInvite(follower) {
     setResending(follower.id)
-    await sendInviteEmail(tripId, tripName, follower.email)
+    await sendInviteEmail(tripId, tripName, follower.email, follower.name)
     setResending(null)
     setResentId(follower.id)
     setTimeout(() => setResentId(null), 3000)
@@ -147,25 +150,35 @@ export default function FollowersPage() {
       {/* Add by email */}
       <div className="px-4 mb-4">
         <p className="text-[10px] uppercase tracking-widest text-white mb-2">Add follower by email</p>
-        <div className="flex gap-2">
+        <div className="space-y-2">
           <input
-            type="email"
-            value={inviteEmail}
-            onChange={e => { setInviteEmail(e.target.value); setInviteError('') }}
+            type="text"
+            value={inviteName}
+            onChange={e => { setInviteName(e.target.value); setInviteError('') }}
             onKeyDown={e => e.key === 'Enter' && inviteFollower()}
-            placeholder="follower@email.com"
-            className="flex-1 bg-surface border border-border rounded-lg px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
+            placeholder="First name"
+            className="w-full bg-surface border border-border rounded-lg px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
           />
-          <button
-            onClick={inviteFollower}
-            disabled={inviting || !inviteEmail.trim()}
-            className={`px-4 rounded-lg font-bold text-[13px] transition-colors disabled:opacity-40 flex items-center gap-1.5 ${
-              inviteSent ? 'bg-brand-teal/20 border border-brand-teal text-brand-teal' : 'bg-brand-teal text-white'
-            }`}
-          >
-            {inviteSent ? <Check size={15} /> : <Plus size={15} />}
-            {inviteSent ? 'Invited' : inviting ? '…' : 'Add'}
-          </button>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => { setInviteEmail(e.target.value); setInviteError('') }}
+              onKeyDown={e => e.key === 'Enter' && inviteFollower()}
+              placeholder="follower@email.com"
+              className="flex-1 bg-surface border border-border rounded-lg px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
+            />
+            <button
+              onClick={inviteFollower}
+              disabled={inviting || !inviteEmail.trim() || !inviteName.trim()}
+              className={`px-4 rounded-lg font-bold text-[13px] transition-colors disabled:opacity-40 flex items-center gap-1.5 ${
+                inviteSent ? 'bg-brand-teal/20 border border-brand-teal text-brand-teal' : 'bg-brand-teal text-white'
+              }`}
+            >
+              {inviteSent ? <Check size={15} /> : <Plus size={15} />}
+              {inviteSent ? 'Invited' : inviting ? '…' : 'Add'}
+            </button>
+          </div>
         </div>
         {inviteError && <p className="text-red-400 text-[11px] mt-1.5">{inviteError}</p>}
         <p className="text-[10px] text-text-disabled mt-1.5">A welcome email will be sent automatically</p>
@@ -216,11 +229,12 @@ export default function FollowersPage() {
                         : 'bg-amber-500/10 border border-amber-500/30'
                     }`}>
                       <span className={`text-[12px] font-bold ${accepted ? 'text-brand-teal' : 'text-amber-500'}`}>
-                        {f.email[0].toUpperCase()}
+                        {(f.name || f.email)[0].toUpperCase()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-medium text-white truncate mb-0.5">{f.email}</p>
+                      <p className="text-[12px] font-medium text-white truncate mb-0.5">{f.name || f.email}</p>
+                      {f.name && <p className="text-[10px] text-text-disabled truncate">{f.email}</p>}
                       <div className="flex items-center gap-4">
                         <p className="text-[10px] text-text-muted">
                           {accepted && f.last_viewed_at

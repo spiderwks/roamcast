@@ -4,9 +4,9 @@ import { ArrowLeft, ArrowRight, Plus, X, Mountain, Footprints, Bike, Waves, Ship
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 
-async function sendInviteEmail(tripId, tripName, email) {
+async function sendInviteEmail(tripId, tripName, email, name) {
   const { data, error } = await supabase.functions.invoke('send-follower-invite', {
-    body: { tripId, tripName, email },
+    body: { tripId, tripName, email, name },
   })
   if (error) console.error('[invite] error:', error)
   else console.log('[invite] success:', data)
@@ -88,39 +88,48 @@ function StepDetails({ form, setForm }) {
 }
 
 function StepFollowers({ followers, setFollowers }) {
+  const [nameInput, setNameInput] = useState('')
   const [emailInput, setEmailInput] = useState('')
   const [error, setError] = useState('')
   function addFollower() {
+    const name = nameInput.trim()
     const email = emailInput.trim().toLowerCase()
+    if (!name) { setError('Enter a first name'); return }
     if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setError('Enter a valid email address'); return }
-    if (followers.includes(email)) { setError('Already added'); return }
-    setFollowers(prev => [...prev, email])
-    setEmailInput(''); setError('')
+    if (followers.some(f => f.email === email)) { setError('Already added'); return }
+    setFollowers(prev => [...prev, { name, email }])
+    setNameInput(''); setEmailInput(''); setError('')
   }
   return (
     <div className="space-y-5">
       <div>
         <label className="block text-[10px] uppercase tracking-widest text-white mb-1.5">Invite followers</label>
-        <div className="flex gap-2">
-          <input type="email" value={emailInput} onChange={e => { setEmailInput(e.target.value); setError('') }}
+        <div className="space-y-2">
+          <input type="text" value={nameInput} onChange={e => { setNameInput(e.target.value); setError('') }}
             onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addFollower())}
-            className="flex-1 bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
-            placeholder="follower@email.com" />
-          <button type="button" onClick={addFollower} className="bg-brand-teal-deeper border border-brand-teal rounded-sm px-3 flex items-center justify-center">
-            <Plus size={16} className="text-brand-teal" />
-          </button>
+            className="w-full bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
+            placeholder="First name" />
+          <div className="flex gap-2">
+            <input type="email" value={emailInput} onChange={e => { setEmailInput(e.target.value); setError('') }}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addFollower())}
+              className="flex-1 bg-surface border border-border rounded-sm px-3 py-3 text-[13px] text-white placeholder-text-disabled focus:border-brand-teal transition-colors"
+              placeholder="follower@email.com" />
+            <button type="button" onClick={addFollower} className="bg-brand-teal-deeper border border-brand-teal rounded-sm px-3 flex items-center justify-center">
+              <Plus size={16} className="text-brand-teal" />
+            </button>
+          </div>
         </div>
         {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
       </div>
       {followers.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {followers.map(email => (
-            <div key={email} className="flex items-center gap-2 bg-surface border border-border rounded-full pl-1 pr-2 py-1">
+          {followers.map(f => (
+            <div key={f.email} className="flex items-center gap-2 bg-surface border border-border rounded-full pl-1 pr-2 py-1">
               <div className="w-6 h-6 rounded-full bg-brand-teal-deeper border border-brand-teal flex items-center justify-center">
-                <span className="text-[10px] font-medium text-brand-teal">{email[0].toUpperCase()}</span>
+                <span className="text-[10px] font-medium text-brand-teal">{f.name[0].toUpperCase()}</span>
               </div>
-              <span className="text-[10px] text-text-secondary">{email}</span>
-              <button type="button" onClick={() => setFollowers(prev => prev.filter(e => e !== email))}>
+              <span className="text-[10px] text-text-secondary">{f.name}</span>
+              <button type="button" onClick={() => setFollowers(prev => prev.filter(x => x.email !== f.email))}>
                 <div className="w-4 h-4 rounded-full bg-surface-elevated flex items-center justify-center"><X size={9} className="text-text-muted" /></div>
               </button>
             </div>
@@ -171,12 +180,12 @@ export default function NewTripPage() {
       if (tripErr) throw tripErr
       if (followers.length > 0) {
         const inserted = []
-        for (const email of followers) {
-          const { error: fErr } = await supabase.from('followers').insert({ trip_id: trip.id, email })
-          if (!fErr) inserted.push(email)
-          else console.warn('[trip] follower insert skipped:', email, fErr.message)
+        for (const f of followers) {
+          const { error: fErr } = await supabase.from('followers').insert({ trip_id: trip.id, email: f.email, name: f.name })
+          if (!fErr) inserted.push(f)
+          else console.warn('[trip] follower insert skipped:', f.email, fErr.message)
         }
-        await Promise.all(inserted.map(email => sendInviteEmail(trip.id, form.name.trim(), email)))
+        await Promise.all(inserted.map(f => sendInviteEmail(trip.id, form.name.trim(), f.email, f.name)))
       }
       navigate('/')
     } catch (err) {

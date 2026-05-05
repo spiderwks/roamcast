@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
   if (!trip) return new Response('Forbidden', { status: 403 })
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
-  const { data: followers } = await adminClient.from('followers').select('email').eq('trip_id', tripId)
+  const { data: followers } = await adminClient.from('followers').select('email, name').eq('trip_id', tripId)
   if (!followers?.length) return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json' } })
 
   const viewUrl = `${APP_URL}/follow/${tripId}/view`
@@ -168,7 +168,7 @@ Deno.serve(async (req: Request) => {
 
   let sent = 0
   for (const f of followers) {
-    const name = getFirstName(f.email)
+    const name = f.name?.trim() || getFirstName(f.email)
     const html = buildEndEmail({ name, tripName, dayNumber, distanceMi, durationSecs, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
