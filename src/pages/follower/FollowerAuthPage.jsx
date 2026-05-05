@@ -12,11 +12,9 @@ export default function FollowerAuthPage() {
 
   useEffect(() => {
     if (email) {
-      supabase.from('followers')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('trip_id', tripId)
-        .eq('email', email.toLowerCase())
-        .then(() => {})
+      supabase.functions.invoke('accept-invite', {
+        body: { tripId, email },
+      })
     }
   }, [tripId, email])
 
