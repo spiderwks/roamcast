@@ -10,9 +10,7 @@ function getFirstName(email: string): string {
 }
 
 function buildInviteEmail(p: { name: string; tripName: string; inviteUrl: string }): string {
-  const iconPin = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`
-  const iconCamera = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`
-  const iconMail = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`
+  const dot = `<table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:10px;height:10px;background:#1D9E75;border-radius:50%"></td></tr></table>`
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>You're invited to follow ${p.tripName}</title></head>
 <body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
@@ -38,19 +36,19 @@ function buildInviteEmail(p: { name: string; tripName: string; inviteUrl: string
         <table cellpadding="0" cellspacing="0" border="0" style="width:100%">
           <tr><td style="padding:12px 0;border-bottom:1px solid #222">
             <table cellpadding="0" cellspacing="0" border="0"><tr>
-              <td style="width:28px;vertical-align:middle">${iconPin}</td>
+              <td style="width:20px;vertical-align:middle">${dot}</td>
               <td style="vertical-align:middle;padding-left:10px;font-size:13px;color:#ccc">Live GPS route as each day unfolds</td>
             </tr></table>
           </td></tr>
           <tr><td style="padding:12px 0;border-bottom:1px solid #222">
             <table cellpadding="0" cellspacing="0" border="0"><tr>
-              <td style="width:28px;vertical-align:middle">${iconCamera}</td>
+              <td style="width:20px;vertical-align:middle">${dot}</td>
               <td style="vertical-align:middle;padding-left:10px;font-size:13px;color:#ccc">Photos, videos and audio moments</td>
             </tr></table>
           </td></tr>
           <tr><td style="padding:12px 0">
             <table cellpadding="0" cellspacing="0" border="0"><tr>
-              <td style="width:28px;vertical-align:middle">${iconMail}</td>
+              <td style="width:20px;vertical-align:middle">${dot}</td>
               <td style="vertical-align:middle;padding-left:10px;font-size:13px;color:#ccc">Email recap at the end of every day</td>
             </tr></table>
           </td></tr>
@@ -61,7 +59,7 @@ function buildInviteEmail(p: { name: string; tripName: string; inviteUrl: string
   </td></tr>
 
   <tr><td style="padding:0 0 32px">
-    <a href="${p.inviteUrl}" style="display:block;background:#1D9E75;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Start following ${p.tripName} →</a>
+    <a href="${p.inviteUrl}" style="display:block;background:#1D9E75;color:#fff;font-weight:700;font-size:15px;text-decoration:none;padding:16px 24px;border-radius:12px;text-align:center">Accept Invite →</a>
   </td></tr>
 
   <tr><td style="padding:20px 0 0;border-top:1px solid #1e1e1e;text-align:center">
