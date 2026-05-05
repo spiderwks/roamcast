@@ -7,6 +7,14 @@ import {
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 
+async function sendInviteEmail(tripId, tripName, email) {
+  const { data, error } = await supabase.functions.invoke('send-follower-invite', {
+    body: { tripId, tripName, email },
+  })
+  if (error) console.error('[invite] error:', error)
+  else console.log('[invite] success:', data)
+}
+
 const ADVENTURE_TYPES = [
   { id: 'hiking', label: 'Hiking', Icon: Mountain },
   { id: 'walking', label: 'Walking', Icon: Footprints },
@@ -42,7 +50,6 @@ function ProgressBar({ step }) {
 function StepDetails({ form, setForm }) {
   return (
     <div className="space-y-5">
-      {/* Trip name */}
       <div>
         <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-1.5">
           Trip name <span className="text-brand-teal">*</span>
@@ -57,7 +64,6 @@ function StepDetails({ form, setForm }) {
         />
       </div>
 
-      {/* Description */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-[10px] uppercase tracking-widest text-text-muted">
@@ -78,7 +84,6 @@ function StepDetails({ form, setForm }) {
         </div>
       </div>
 
-      {/* Adventure type */}
       <div>
         <label className="block text-[10px] uppercase tracking-widest text-text-muted mb-2">
           Adventure type
@@ -110,7 +115,6 @@ function StepDetails({ form, setForm }) {
         <p className="text-[10px] text-text-disabled mt-2">You can change this later in trip settings</p>
       </div>
 
-      {/* Dates */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-[9px] uppercase tracking-widest text-text-muted mb-1.5">
@@ -139,7 +143,7 @@ function StepDetails({ form, setForm }) {
   )
 }
 
-function StepFollowers({ form, setForm }) {
+function StepFollowers({ followers, setFollowers }) {
   const [emailInput, setEmailInput] = useState('')
   const [error, setError] = useState('')
 
@@ -149,21 +153,13 @@ function StepFollowers({ form, setForm }) {
       setError('Enter a valid email address')
       return
     }
-    if (form.followers.includes(email)) {
+    if (followers.includes(email)) {
       setError('Already added')
       return
     }
-    setForm(f => ({ ...f, followers: [...f.followers, email] }))
+    setFollowers(prev => [...prev, email])
     setEmailInput('')
     setError('')
-  }
-
-  function removeFollower(email) {
-    setForm(f => ({ ...f, followers: f.followers.filter(e => e !== email) }))
-  }
-
-  function getInitials(email) {
-    return email[0].toUpperCase()
   }
 
   return (
@@ -192,18 +188,18 @@ function StepFollowers({ form, setForm }) {
         {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
       </div>
 
-      {form.followers.length > 0 && (
+      {followers.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {form.followers.map(email => (
+          {followers.map(email => (
             <div
               key={email}
               className="flex items-center gap-2 bg-surface border border-border rounded-full pl-1 pr-2 py-1"
             >
               <div className="w-6 h-6 rounded-full bg-brand-teal-deeper border border-brand-teal flex items-center justify-center">
-                <span className="text-[10px] font-medium text-brand-teal">{getInitials(email)}</span>
+                <span className="text-[10px] font-medium text-brand-teal">{email[0].toUpperCase()}</span>
               </div>
               <span className="text-[10px] text-text-secondary">{email}</span>
-              <button type="button" onClick={() => removeFollower(email)}>
+              <button type="button" onClick={() => setFollowers(prev => prev.filter(e => e !== email))}>
                 <div className="w-4 h-4 rounded-full bg-surface-elevated flex items-center justify-center">
                   <X size={9} className="text-text-muted" />
                 </div>
@@ -213,7 +209,7 @@ function StepFollowers({ form, setForm }) {
         </div>
       )}
 
-      {form.followers.length === 0 && (
+      {followers.length === 0 && (
         <p className="text-[12px] text-text-disabled text-center py-4">
           No followers added yet. You can add them later too.
         </p>
@@ -222,7 +218,7 @@ function StepFollowers({ form, setForm }) {
   )
 }
 
-function StepSettings({ form, setForm }) {
+function StepSettings({ form, followers }) {
   return (
     <div className="space-y-5">
       <div className="bg-surface border border-border rounded-lg p-4">
@@ -232,7 +228,7 @@ function StepSettings({ form, setForm }) {
           <Row label="Type" value={form.adventure_type || '—'} />
           <Row label="Start" value={form.start_date || '—'} />
           <Row label="End" value={form.end_date || '—'} />
-          <Row label="Followers" value={form.followers.length > 0 ? `${form.followers.length} invited` : 'None'} />
+          <Row label="Followers" value={followers.length > 0 ? `${followers.length} invited` : 'None'} />
         </div>
       </div>
       <p className="text-[11px] text-text-disabled text-center leading-relaxed">
@@ -257,7 +253,6 @@ const emptyForm = {
   adventure_type: 'hiking',
   start_date: '',
   end_date: '',
-  followers: [],
 }
 
 export default function NewTripPage() {
@@ -265,6 +260,7 @@ export default function NewTripPage() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [form, setForm] = useState(emptyForm)
+  const [followers, setFollowers] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -301,10 +297,14 @@ export default function NewTripPage() {
 
       if (tripErr) throw tripErr
 
-      if (form.followers.length > 0) {
-        await supabase.from('followers').insert(
-          form.followers.map(email => ({ trip_id: trip.id, email }))
-        )
+      if (followers.length > 0) {
+        const inserted = []
+        for (const email of followers) {
+          const { error: fErr } = await supabase.from('followers').insert({ trip_id: trip.id, email })
+          if (!fErr) inserted.push(email)
+          else console.warn('[trip] follower insert skipped:', email, fErr.message)
+        }
+        await Promise.all(inserted.map(email => sendInviteEmail(trip.id, form.name.trim(), email)))
       }
 
       navigate('/')
@@ -317,7 +317,6 @@ export default function NewTripPage() {
 
   return (
     <div className="flex flex-col h-full bg-surface-deep">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
         <button
           onClick={() => step === 0 ? navigate(-1) : setStep(s => s - 1)}
@@ -328,19 +327,16 @@ export default function NewTripPage() {
         <h1 className="text-[16px] font-medium text-white">New trip</h1>
       </div>
 
-      {/* Progress */}
       <div className="px-4 mb-6">
         <ProgressBar step={step} />
       </div>
 
-      {/* Step content */}
       <div className="flex-1 overflow-y-auto px-4">
         {step === 0 && <StepDetails form={form} setForm={setForm} />}
-        {step === 1 && <StepFollowers form={form} setForm={setForm} />}
-        {step === 2 && <StepSettings form={form} setForm={setForm} />}
+        {step === 1 && <StepFollowers followers={followers} setFollowers={setFollowers} />}
+        {step === 2 && <StepSettings form={form} followers={followers} />}
       </div>
 
-      {/* CTA */}
       <div className="px-4 pb-6 pt-4">
         {error && <p className="text-red-400 text-xs mb-3 text-center">{error}</p>}
 
