@@ -34,7 +34,7 @@ export default function FollowerAuthPage() {
         <p className="text-[11px] text-brand-teal uppercase tracking-widest mb-2">You're following</p>
         <h1 className="text-[26px] font-bold text-white leading-tight mb-4">{tripName}</h1>
         <p className="text-[14px] text-text-muted leading-relaxed max-w-xs">
-          You'll receive a full recap by email at the end of each day.
+          Ok great, you are following <span className="text-white font-semibold">"{tripName}"</span>! Be on the lookout for a daily recap email at the end of the day.
         </p>
       </div>
     </div>
