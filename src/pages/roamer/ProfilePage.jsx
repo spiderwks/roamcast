@@ -1,11 +1,50 @@
+import { useState } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { Pencil, Check, X } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/Avatar'
 
 export default function ProfilePage() {
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, loadProfile } = useAuth()
   const navigate = useNavigate()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Roamer'
+
+  const [editing, setEditing] = useState(false)
+  const [nameInput, setNameInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  function startEdit() {
+    setNameInput(displayName)
+    setSaveError('')
+    setEditing(true)
+  }
+
+  function cancelEdit() {
+    setEditing(false)
+    setSaveError('')
+  }
+
+  async function saveProfile() {
+    const name = nameInput.trim()
+    if (!name) { setSaveError('Name cannot be empty'); return }
+    setSaving(true)
+    setSaveError('')
+    const { error } = await supabase
+      .from('profiles')
+      .update({ full_name: name })
+      .eq('id', user.id)
+    if (error) {
+      setSaveError('Could not save. Please try again.')
+      setSaving(false)
+      return
+    }
+    await supabase.auth.updateUser({ data: { full_name: name } })
+    await loadProfile(user.id)
+    setSaving(false)
+    setEditing(false)
+  }
 
   async function handleSignOut() {
     await signOut()
@@ -13,12 +52,58 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col items-center px-6 pt-10 pb-6 h-full">
-      <Avatar name={displayName} size={64} />
-      <p className="text-white font-medium text-lg mt-3">{displayName}</p>
-      <p className="text-text-muted text-sm">{user?.email}</p>
+    <div className="flex flex-col h-full bg-surface-deep px-6 pt-10 pb-6">
+      {/* Avatar + name */}
+      <div className="flex flex-col items-center mb-8">
+        <Avatar name={displayName} size={72} />
+
+        {editing ? (
+          <div className="mt-4 w-full max-w-xs">
+            <input
+              type="text"
+              value={nameInput}
+              onChange={e => { setNameInput(e.target.value); setSaveError('') }}
+              onKeyDown={e => { if (e.key === 'Enter') saveProfile(); if (e.key === 'Escape') cancelEdit() }}
+              autoFocus
+              maxLength={60}
+              className="w-full bg-surface border border-brand-teal rounded-sm px-3 py-2.5 text-[14px] text-white text-center focus:outline-none"
+            />
+            {saveError && <p className="text-red-400 text-xs mt-1 text-center">{saveError}</p>}
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={cancelEdit}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-sm border border-border text-text-secondary text-[13px]"
+              >
+                <X size={14} /> Cancel
+              </button>
+              <button
+                onClick={saveProfile}
+                disabled={saving}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-sm bg-brand-teal text-white text-[13px] font-medium disabled:opacity-50"
+              >
+                <Check size={14} /> {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-3">
+            <p className="text-white font-semibold text-[18px]">{displayName}</p>
+            <button onClick={startEdit} className="w-7 h-7 rounded-full bg-surface border border-border flex items-center justify-center">
+              <Pencil size={12} className="text-text-muted" />
+            </button>
+          </div>
+        )}
+
+        <p className="text-text-muted text-[13px] mt-1">{user?.email}</p>
+      </div>
+
       <div className="mt-auto w-full">
-        <button onClick={handleSignOut} className="w-full border border-border text-text-secondary text-sm font-medium py-3 rounded-sm">Sign out</button>
+        <button
+          onClick={handleSignOut}
+          className="w-full border border-border text-text-secondary text-sm font-medium py-3 rounded-sm"
+        >
+          Sign out
+        </button>
       </div>
     </div>
   )
