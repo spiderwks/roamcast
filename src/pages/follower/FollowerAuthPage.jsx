@@ -26,15 +26,15 @@ export default function FollowerAuthPage() {
       </div>
 
       <div className="flex-1 flex flex-col justify-center items-center text-center">
-        <div className="w-16 h-16 rounded-full bg-brand-teal/10 border border-brand-teal/30 flex items-center justify-center mb-6">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <div className="w-24 h-24 rounded-full bg-brand-teal/10 border border-brand-teal/30 flex items-center justify-center mb-6">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
         <p className="text-[11px] text-brand-teal uppercase tracking-widest mb-2">You're following</p>
         <h1 className="text-[26px] font-bold text-white leading-tight mb-4">{tripName}</h1>
         <p className="text-[14px] text-text-muted leading-relaxed max-w-xs">
-          You'll receive an email at the start and end of each day with the full recap.
+          You'll receive a full recap by email at the end of each day.
         </p>
       </div>
     </div>
