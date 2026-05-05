@@ -4,6 +4,21 @@ import { ArrowLeft, ArrowRight, Plus, X, Mountain, Footprints, Bike, Waves, Ship
 import { useAuth } from '../../lib/AuthContext'
 import { supabase } from '../../lib/supabase'
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+async function sendInviteEmail(tripId, tripName, email, authHeader) {
+  await fetch(`${SUPABASE_URL}/functions/v1/send-follower-invite`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({ tripId, tripName, email }),
+  })
+}
+
 const ADVENTURE_TYPES = [
   { id: 'hiking', label: 'Hiking', Icon: Mountain },
   { id: 'walking', label: 'Walking', Icon: Footprints },
@@ -160,7 +175,12 @@ export default function NewTripPage() {
         .insert({ roamer_id: user.id, name: form.name.trim(), description: form.description.trim() || null, adventure_type: form.adventure_type, start_date: form.start_date || null, end_date: form.end_date || null, status: 'active' })
         .select().single()
       if (tripErr) throw tripErr
-      if (form.followers.length > 0) await supabase.from('followers').insert(form.followers.map(email => ({ trip_id: trip.id, email })))
+      if (form.followers.length > 0) {
+        await supabase.from('followers').insert(form.followers.map(email => ({ trip_id: trip.id, email })))
+        const { data: { session } } = await supabase.auth.getSession()
+        const authHeader = `Bearer ${session?.access_token}`
+        await Promise.all(form.followers.map(email => sendInviteEmail(trip.id, form.name.trim(), email, authHeader)))
+      }
       navigate('/')
     } catch (err) {
       setError(err.message || 'Failed to create trip. Please try again.')
