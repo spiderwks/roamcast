@@ -107,7 +107,7 @@ Deno.serve(async (req: Request) => {
   if (!trip) return new Response('Forbidden', { status: 403 })
 
   const name = providedName?.trim() || getFirstName(email)
-  const inviteUrl = `${APP_URL}/follow/${tripId}?name=${encodeURIComponent(tripName)}`
+  const inviteUrl = `${APP_URL}/follow/${tripId}?name=${encodeURIComponent(tripName)}&email=${encodeURIComponent(email)}`
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
