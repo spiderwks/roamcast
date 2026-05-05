@@ -130,11 +130,16 @@ export default function FollowerAuthPage() {
       <div className="flex-1">
         {step === 'email' ? (
           <>
-            <p className="text-[10px] text-brand-teal uppercase tracking-widest mb-1">You're invited to follow</p>
-            <h1 className="text-[24px] font-bold text-white leading-tight mb-2">{tripName}</h1>
-            <p className="text-[13px] text-text-muted mb-8">
-              Enter your email to get a sign-in code. No password needed.
-            </p>
+            <div className="mb-8">
+              <div className="inline-flex items-center gap-2 bg-brand-teal/10 border border-brand-teal/30 rounded-full px-3 py-1.5 mb-5">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-teal" />
+                <span className="text-[11px] text-brand-teal font-medium">Invite accepted</span>
+              </div>
+              <h1 className="text-[26px] font-bold text-white leading-tight mb-2">{tripName}</h1>
+              <p className="text-[13px] text-text-muted leading-relaxed">
+                Confirm your email below and we'll send you a sign-in code — then you're all set to follow along.
+              </p>
+            </div>
 
             <div className="space-y-3">
               <div>
@@ -157,8 +162,9 @@ export default function FollowerAuthPage() {
                 disabled={loading || !email.trim()}
                 className="w-full bg-brand-teal text-white font-bold text-[14px] py-4 rounded-xl disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Sending…' : 'Send sign-in code →'}
+                {loading ? 'Sending…' : 'Confirm email →'}
               </button>
+              <p className="text-[11px] text-text-disabled text-center pt-1">No password needed — we'll email you a code</p>
             </div>
           </>
         ) : (
