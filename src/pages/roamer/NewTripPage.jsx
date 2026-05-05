@@ -169,6 +169,7 @@ export default function NewTripPage() {
         .insert({ roamer_id: user.id, name: form.name.trim(), description: form.description.trim() || null, adventure_type: form.adventure_type, start_date: form.start_date || null, end_date: form.end_date || null, status: 'active' })
         .select().single()
       if (tripErr) throw tripErr
+      console.log('[trip] followers at create time:', form.followers)
       if (form.followers.length > 0) {
         // Insert one at a time so a duplicate doesn't block the whole batch
         const inserted = []
