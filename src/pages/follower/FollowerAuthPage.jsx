@@ -8,6 +8,7 @@ export default function FollowerAuthPage() {
   const [searchParams] = useSearchParams()
   const tripName = searchParams.get('name') || 'this adventure'
   const email = searchParams.get('email') || ''
+  const roamerName = searchParams.get('roamer') || ''
 
   useEffect(() => {
     if (email) {
@@ -34,7 +35,7 @@ export default function FollowerAuthPage() {
         <p className="text-[11px] text-brand-teal uppercase tracking-widest mb-2">You're following</p>
         <h1 className="text-[26px] font-bold text-white leading-tight mb-4">{tripName}</h1>
         <p className="text-[14px] text-text-muted leading-relaxed max-w-xs">
-          Ok great, you are following <span className="text-white font-semibold">"{tripName}"</span>! Be on the lookout for a daily recap email at the end of the day.
+          Ok great, you are now following {roamerName ? `${roamerName}'s trip ` : ''}"{tripName}"! Be on the lookout for a daily recap email at the end of the day.
         </p>
       </div>
     </div>
