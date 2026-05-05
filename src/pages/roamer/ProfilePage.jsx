@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth } from '../../lib/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { Pencil, Check, X } from 'lucide-react'
+import { Pencil, Check, X, Camera } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/Avatar'
 
@@ -9,11 +9,14 @@ export default function ProfilePage() {
   const { user, profile, signOut, loadProfile } = useAuth()
   const navigate = useNavigate()
   const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Roamer'
+  const avatarUrl = profile?.avatar_url || null
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const fileInputRef = useRef(null)
 
   function startEdit() {
     setNameInput(displayName)
@@ -31,10 +34,7 @@ export default function ProfilePage() {
     if (!name) { setSaveError('Name cannot be empty'); return }
     setSaving(true)
     setSaveError('')
-    const { error } = await supabase
-      .from('profiles')
-      .update({ full_name: name })
-      .eq('id', user.id)
+    const { error } = await supabase.from('profiles').update({ full_name: name }).eq('id', user.id)
     if (error) {
       setSaveError('Could not save. Please try again.')
       setSaving(false)
@@ -46,6 +46,26 @@ export default function ProfilePage() {
     setEditing(false)
   }
 
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    const ext = file.name.split('.').pop()
+    const path = `${user.id}/avatar.${ext}`
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (uploadError) {
+      console.error('Avatar upload error:', uploadError)
+      setUploadingAvatar(false)
+      return
+    }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id)
+    await loadProfile(user.id)
+    setUploadingAvatar(false)
+  }
+
   async function handleSignOut() {
     await signOut()
     navigate('/login')
@@ -55,7 +75,24 @@ export default function ProfilePage() {
     <div className="flex flex-col h-full bg-surface-deep px-6 pt-10 pb-6">
       {/* Avatar + name */}
       <div className="flex flex-col items-center mb-8">
-        <Avatar name={displayName} size={72} />
+        <div className="relative">
+          <Avatar name={displayName} size={80} src={avatarUrl} />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-brand-teal flex items-center justify-center border-2 border-surface-deep disabled:opacity-50"
+          >
+            <Camera size={13} className="text-white" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+        {uploadingAvatar && <p className="text-[10px] text-text-muted mt-2">Uploading…</p>}
 
         {editing ? (
           <div className="mt-4 w-full max-w-xs">
