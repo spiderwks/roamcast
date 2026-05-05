@@ -74,7 +74,7 @@ function buildEndEmail(p: {
   const statsRow = `
     ${hasDistance ? `<td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceMi.toFixed(1)}&nbsp;mi</span><br><span style="font-size:11px;color:#555">covered</span></td>` : ''}
     <td style="padding-right:${hasDuration ? '28px' : '0'}"><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
-    ${hasDuration ? `<td><span style="font-size:14px;font-weight:700;color:#fff">${formatDuration(p.durationSecs)}</span><br><span style="font-size:11px;color:#555">on trail</span></td>` : ''}
+    ${hasDuration ? `<td><span style="font-size:14px;font-weight:700;color:#fff">${formatDuration(p.durationSecs)}</span><br><span style="font-size:11px;color:#555">duration</span></td>` : ''}
   `
 
   // Only render the chart row when there is real GPS data
