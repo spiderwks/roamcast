@@ -3,20 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Copy, Check, Users, Trash2, Link, Plus, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-async function sendInviteEmail(tripId, tripName, email, authHeader) {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/send-follower-invite`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': authHeader,
-      'apikey': SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ tripId, tripName, email }),
+async function sendInviteEmail(tripId, tripName, email) {
+  const { error } = await supabase.functions.invoke('send-follower-invite', {
+    body: { tripId, tripName, email },
   })
-  return res.ok
+  if (error) console.error('sendInviteEmail error:', error)
 }
 
 export default function FollowersPage() {
@@ -51,10 +42,6 @@ export default function FollowersPage() {
     setLoading(false)
   }
 
-  async function getAuthHeader() {
-    const { data: { session } } = await supabase.auth.getSession()
-    return `Bearer ${session?.access_token}`
-  }
 
   async function copyLink() {
     try {
@@ -96,8 +83,7 @@ export default function FollowersPage() {
       setInviting(false)
       return
     }
-    const authHeader = await getAuthHeader()
-    await sendInviteEmail(tripId, tripName, email, authHeader)
+    await sendInviteEmail(tripId, tripName, email)
     setInviteEmail('')
     setInviteSent(true)
     setTimeout(() => setInviteSent(false), 2500)
@@ -107,8 +93,7 @@ export default function FollowersPage() {
 
   async function resendInvite(follower) {
     setResending(follower.id)
-    const authHeader = await getAuthHeader()
-    await sendInviteEmail(tripId, tripName, follower.email, authHeader)
+    await sendInviteEmail(tripId, tripName, follower.email)
     setResending(null)
     setResentId(follower.id)
     setTimeout(() => setResentId(null), 3000)
