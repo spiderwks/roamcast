@@ -24,7 +24,7 @@ function buildInviteEmail(p: { name: string; tripName: string; inviteUrl: string
   <tr><td style="padding:0 0 24px">
     <p style="margin:0 0 8px;font-size:14px;color:#777">Hi ${p.name},</p>
     <h1 style="margin:0 0 14px;font-size:24px;font-weight:800;color:#fff;line-height:1.25">You've been invited to follow<br><span style="color:#1D9E75">${p.tripName}</span></h1>
-    <p style="margin:0;font-size:14px;color:#888;line-height:1.7">You'll get notified when each day begins and receive a full recap when it ends — photos, videos, the route, and every moment captured along the way.</p>
+    <p style="margin:0;font-size:14px;color:#888;line-height:1.7">At the end of each day you'll receive a full recap — photos, videos, the route, and every moment captured along the way.</p>
   </td></tr>
 
   <tr><td style="padding:0 0 28px">
@@ -37,7 +37,7 @@ function buildInviteEmail(p: { name: string; tripName: string; inviteUrl: string
           <tr><td style="padding:12px 0;border-bottom:1px solid #222">
             <table cellpadding="0" cellspacing="0" border="0"><tr>
               <td style="width:20px;vertical-align:middle">${dot}</td>
-              <td style="vertical-align:middle;padding-left:10px;font-size:13px;color:#ccc">Live GPS route as each day unfolds</td>
+              <td style="vertical-align:middle;padding-left:10px;font-size:13px;color:#ccc">GPS route map for each day</td>
             </tr></table>
           </td></tr>
           <tr><td style="padding:12px 0;border-bottom:1px solid #222">
