@@ -57,10 +57,10 @@ export default function App() {
           <Route path="trips/new" element={<NewTripPage />} />
           <Route path="followers" element={<AllFollowersPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="session/:tripId" element={<SessionPage />} />
         </Route>
 
         {/* Full-screen routes (no bottom nav) */}
-        <Route path="/session/:tripId" element={<ProtectedRoute><SessionPage /></ProtectedRoute>} />
         <Route path="/capture/:tripId/:dayId" element={<ProtectedRoute><MomentCapturePage /></ProtectedRoute>} />
         <Route path="/upload/:tripId" element={<ProtectedRoute><UploadPage /></ProtectedRoute>} />
         <Route path="/trips/:tripId/history" element={<ProtectedRoute><TripHistoryPage /></ProtectedRoute>} />
