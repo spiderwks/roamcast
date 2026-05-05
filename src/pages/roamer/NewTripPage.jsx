@@ -183,7 +183,7 @@ export default function NewTripPage() {
         for (const f of followers) {
           const { error: fErr } = await supabase.from('followers').insert({ trip_id: trip.id, email: f.email, name: f.name })
           if (!fErr) inserted.push(f)
-          else console.warn('[trip] follower insert skipped:', f.email, fErr.message)
+          else throw new Error(`Could not add follower ${f.email}: ${fErr.message}`)
         }
         await Promise.all(inserted.map(f => sendInviteEmail(trip.id, form.name.trim(), f.email, f.name)))
       }
