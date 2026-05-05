@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
   const fileInputRef = useRef(null)
 
   function startEdit() {
@@ -50,13 +51,14 @@ export default function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingAvatar(true)
+    setAvatarError('')
     const ext = file.name.split('.').pop()
     const path = `${user.id}/avatar.${ext}`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(path, file, { upsert: true, contentType: file.type })
     if (uploadError) {
-      console.error('Avatar upload error:', uploadError)
+      setAvatarError(uploadError.message)
       setUploadingAvatar(false)
       return
     }
@@ -93,6 +95,7 @@ export default function ProfilePage() {
           />
         </div>
         {uploadingAvatar && <p className="text-[10px] text-text-muted mt-2">Uploading…</p>}
+        {avatarError && <p className="text-red-400 text-[11px] mt-2 text-center max-w-xs">{avatarError}</p>}
 
         {editing ? (
           <div className="mt-4 w-full max-w-xs">
