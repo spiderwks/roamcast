@@ -69,7 +69,7 @@ function buildEndEmail(p: {
   const abbr = ADVENTURE_ABBR[p.adventureType] ?? 'GO'
   const bodyCopy = buildBodyCopy(p.distanceMi, p.durationSecs, p.momentCount)
   const hasDistance = p.distanceMi > 0
-  const hasDuration = p.durationSecs > 0
+  const hasDuration = p.durationSecs >= 60
 
   const statsRow = `
     ${hasDistance ? `<td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceMi.toFixed(1)}&nbsp;mi</span><br><span style="font-size:11px;color:#555">covered</span></td>` : ''}
