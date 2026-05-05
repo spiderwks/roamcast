@@ -51,12 +51,11 @@ const ADVENTURE_ABBR: Record<string, string> = {
   water: 'SWIM', cruise: 'SAIL', driving: 'DRIVE',
 }
 
-function buildBodyCopy(distanceMi: number, durationSecs: number, momentCount: number): string {
+function buildBodyCopy(distanceMi: number, momentCount: number): string {
   const momentsStr = `${momentCount}&nbsp;moment${momentCount !== 1 ? 's' : ''} captured along the way`
-  if (distanceMi > 0 && durationSecs > 0) {
-    return `${distanceMi.toFixed(1)}&nbsp;mi covered over ${formatDuration(durationSecs)}, with ${momentsStr}.`
+  if (distanceMi > 0) {
+    return `${distanceMi.toFixed(1)}&nbsp;mi covered, with ${momentsStr}.`
   }
-  // Zero-state: just surface the moment count, skip the missing stats
   return `${momentsStr.charAt(0).toUpperCase() + momentsStr.slice(1)}.`
 }
 
@@ -67,14 +66,12 @@ function buildEndEmail(p: {
 }): string {
   const label = ADVENTURE_LABELS[p.adventureType] ?? 'Adventure'
   const abbr = ADVENTURE_ABBR[p.adventureType] ?? 'GO'
-  const bodyCopy = buildBodyCopy(p.distanceMi, p.durationSecs, p.momentCount)
+  const bodyCopy = buildBodyCopy(p.distanceMi, p.momentCount)
   const hasDistance = p.distanceMi > 0
-  const hasDuration = p.durationSecs >= 60
 
   const statsRow = `
     ${hasDistance ? `<td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceMi.toFixed(1)}&nbsp;mi</span><br><span style="font-size:11px;color:#555">covered</span></td>` : ''}
-    <td style="padding-right:${hasDuration ? '28px' : '0'}"><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
-    ${hasDuration ? `<td><span style="font-size:14px;font-weight:700;color:#fff">${formatDuration(p.durationSecs)}</span><br><span style="font-size:11px;color:#555">duration</span></td>` : ''}
+    <td><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
   `
 
   // Only render the chart row when there is real GPS data
