@@ -15,9 +15,9 @@ function formatDuration(secs: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-function generateRouteSVG(points: any[] | null): string {
-  const fallback = `<svg width="100%" height="56" viewBox="0 0 460 56" xmlns="http://www.w3.org/2000/svg"><path d="M0,46 C80,36 160,18 230,22 C300,26 380,8 460,4" stroke="#1D9E75" stroke-width="2" fill="none" opacity="0.7" stroke-linecap="round"/><circle cx="58" cy="40" r="4" fill="#f59e0b"/><circle cx="230" cy="22" r="4" fill="#1D9E75"/><circle cx="390" cy="7" r="4" fill="#f59e0b"/></svg>`
-  if (!points || points.length < 3) return fallback
+// Returns null when there are no real GPS points — caller hides the chart section
+function generateRouteSVG(points: any[] | null): string | null {
+  if (!points || points.length < 3) return null
   try {
     const lats = points.map((p: any) => p.lat)
     const lngs = points.map((p: any) => p.lng)
@@ -37,7 +37,7 @@ function generateRouteSVG(points: any[] | null): string {
       <circle cx="${mx}" cy="${my}" r="4" fill="#f59e0b"/>
       <circle cx="${ex}" cy="${ey}" r="5" fill="#1D9E75"/>
     </svg>`
-  } catch { return fallback }
+  } catch { return null }
 }
 
 const ADVENTURE_LABELS: Record<string, string> = {
@@ -45,18 +45,44 @@ const ADVENTURE_LABELS: Record<string, string> = {
   water: 'Water sports', cruise: 'Cruise', driving: 'Driving',
 }
 
-const ADVENTURE_ICON: Record<string, string> = {
-  hiking:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3l4 8 5-5 5 15H2L8 3z"/></svg>`,
-  walking: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4" r="2"/><path d="M9 22l1-8-3-3 3-5h6l3 5-3 3 1 8"/></svg>`,
-  cycling: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="M12 17V7l-7 10h14L12 7"/></svg>`,
-  water:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
-  cruise:  `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15H6l-3 6h18l-3-6z"/><path d="M12 3v12M8 9l4-6 4 6"/></svg>`,
-  driving: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="8" width="22" height="10" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H10a2 2 0 0 0-2 2v3"/><circle cx="7" cy="18" r="1"/><circle cx="17" cy="18" r="1"/></svg>`,
+// Short text abbreviations — SVGs are stripped by most email clients
+const ADVENTURE_ABBR: Record<string, string> = {
+  hiking: 'HIKE', walking: 'WALK', cycling: 'BIKE',
+  water: 'SWIM', cruise: 'SAIL', driving: 'DRIVE',
 }
 
-function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; distanceKm: string; duration: string; momentCount: number; adventureType: string; svgChart: string; viewUrl: string }): string {
+function buildBodyCopy(distanceMi: number, durationSecs: number, momentCount: number): string {
+  const momentsStr = `${momentCount}&nbsp;moment${momentCount !== 1 ? 's' : ''} captured along the way`
+  if (distanceMi > 0 && durationSecs > 0) {
+    return `${distanceMi.toFixed(1)}&nbsp;mi covered over ${formatDuration(durationSecs)}, with ${momentsStr}.`
+  }
+  // Zero-state: just surface the moment count, skip the missing stats
+  return `${momentsStr.charAt(0).toUpperCase() + momentsStr.slice(1)}.`
+}
+
+function buildEndEmail(p: {
+  name: string; tripName: string; dayNumber: number;
+  distanceMi: number; durationSecs: number; momentCount: number;
+  adventureType: string; svgChart: string | null; viewUrl: string
+}): string {
   const label = ADVENTURE_LABELS[p.adventureType] ?? 'Adventure'
-  const icon = ADVENTURE_ICON[p.adventureType] ?? ADVENTURE_ICON.hiking
+  const abbr = ADVENTURE_ABBR[p.adventureType] ?? 'GO'
+  const bodyCopy = buildBodyCopy(p.distanceMi, p.durationSecs, p.momentCount)
+  const hasDistance = p.distanceMi > 0
+  const hasDuration = p.durationSecs > 0
+
+  const statsRow = `
+    ${hasDistance ? `<td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceMi.toFixed(1)}&nbsp;mi</span><br><span style="font-size:11px;color:#555">covered</span></td>` : ''}
+    <td style="padding-right:${hasDuration ? '28px' : '0'}"><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
+    ${hasDuration ? `<td><span style="font-size:14px;font-weight:700;color:#fff">${formatDuration(p.durationSecs)}</span><br><span style="font-size:11px;color:#555">on trail</span></td>` : ''}
+  `
+
+  // Only render the chart row when there is real GPS data
+  const chartSection = p.svgChart ? `
+      <tr><td colspan="2" style="padding:0 16px 20px">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111;border-radius:10px"><tr><td style="padding:10px 8px 6px">${p.svgChart}</td></tr></table>
+      </td></tr>` : ''
+
   return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day ${p.dayNumber} recap — ${p.tripName}</title></head>
 <body style="margin:0;padding:0;background:#0d0d0d;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d0d0d;padding:32px 16px"><tr><td align="center">
@@ -69,14 +95,14 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
   <tr><td style="padding:0 0 24px">
     <p style="margin:0 0 8px;font-size:14px;color:#777">Hi ${p.name},</p>
     <h1 style="margin:0 0 14px;font-size:24px;font-weight:800;color:#fff;line-height:1.25">Day ${p.dayNumber} of ${p.tripName}<br>is ready to watch</h1>
-    <p style="margin:0;font-size:14px;color:#888;line-height:1.7">${p.distanceKm}&nbsp;km walked, ${p.duration} on trail, and ${p.momentCount}&nbsp;moment${p.momentCount !== 1 ? 's' : ''} captured along the way.</p>
+    <p style="margin:0;font-size:14px;color:#888;line-height:1.7">${bodyCopy}</p>
   </td></tr>
 
   <tr><td style="padding:0 0 28px">
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:16px">
       <tr>
         <td width="64" valign="middle" style="padding:20px 0 16px 20px">
-          <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background:#0a2218;border:1px solid #1D9E75;border-radius:10px;text-align:center;vertical-align:middle">${icon}</td></tr></table>
+          <table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:44px;height:44px;background:#0a2218;border:1px solid #1D9E75;border-radius:10px;text-align:center;vertical-align:middle;font-size:9px;font-weight:900;color:#1D9E75;letter-spacing:0.5px">${abbr}</td></tr></table>
         </td>
         <td valign="middle" style="padding:20px 20px 16px 12px">
           <p style="margin:0;font-size:15px;font-weight:700;color:#fff">${p.tripName}</p>
@@ -84,15 +110,9 @@ function buildEndEmail(p: { name: string; tripName: string; dayNumber: number; d
         </td>
       </tr>
       <tr><td colspan="2" style="padding:0 20px 18px">
-        <table cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#1D9E75">${p.distanceKm}km</span><br><span style="font-size:11px;color:#555">walked</span></td>
-          <td style="padding-right:28px"><span style="font-size:14px;font-weight:700;color:#fff">${p.momentCount}</span><br><span style="font-size:11px;color:#555">moment${p.momentCount !== 1 ? 's' : ''}</span></td>
-          <td><span style="font-size:14px;font-weight:700;color:#fff">${p.duration}</span><br><span style="font-size:11px;color:#555">on trail</span></td>
-        </tr></table>
+        <table cellpadding="0" cellspacing="0" border="0"><tr>${statsRow}</tr></table>
       </td></tr>
-      <tr><td colspan="2" style="padding:0 16px 20px">
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#111;border-radius:10px"><tr><td style="padding:10px 8px 6px">${p.svgChart}</td></tr></table>
-      </td></tr>
+      ${chartSection}
     </table>
   </td></tr>
 
@@ -139,10 +159,10 @@ Deno.serve(async (req: Request) => {
   const subject = `Day ${dayNumber} recap is ready — ${tripName}`
 
   const { data: day } = await adminClient.from('days').select('id, distance_miles, duration_seconds').eq('trip_id', tripId).eq('day_number', dayNumber).single()
-  let distanceKm = '0.0', duration = '0m', momentCount = 0, svgChart = ''
+  let distanceMi = 0, durationSecs = 0, momentCount = 0, svgChart: string | null = null
   if (day) {
-    distanceKm = ((day.distance_miles ?? 0) * 1.60934).toFixed(1)
-    duration = formatDuration(day.duration_seconds ?? 0)
+    distanceMi = day.distance_miles ?? 0
+    durationSecs = day.duration_seconds ?? 0
     const { count } = await adminClient.from('moments').select('id', { count: 'exact', head: true }).eq('day_id', day.id)
     momentCount = count ?? 0
     const { data: track } = await adminClient.from('gps_tracks').select('points').eq('day_id', day.id).single()
@@ -152,7 +172,7 @@ Deno.serve(async (req: Request) => {
   let sent = 0
   for (const f of followers) {
     const name = getFirstName(f.email)
-    const html = buildEndEmail({ name, tripName, dayNumber, distanceKm, duration, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
+    const html = buildEndEmail({ name, tripName, dayNumber, distanceMi, durationSecs, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
