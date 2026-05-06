@@ -152,7 +152,6 @@ Deno.serve(async (req: Request) => {
   const { data: followers } = await adminClient.from('followers').select('email, name').eq('trip_id', tripId).not('accepted_at', 'is', null)
   if (!followers?.length) return new Response(JSON.stringify({ sent: 0 }), { headers: { 'Content-Type': 'application/json' } })
 
-  const viewUrl = `${APP_URL}/follow/${tripId}/view`
   const subject = `Day ${dayNumber} recap is ready — ${tripName}`
 
   const { data: day } = await adminClient.from('days').select('id, distance_miles, duration_seconds').eq('trip_id', tripId).eq('day_number', dayNumber).single()
@@ -169,6 +168,7 @@ Deno.serve(async (req: Request) => {
   let sent = 0
   for (const f of followers) {
     const name = f.name?.trim() || getFirstName(f.email)
+    const viewUrl = `${APP_URL}/follow/${tripId}/view?email=${encodeURIComponent(f.email)}`
     const html = buildEndEmail({ name, tripName, dayNumber, distanceMi, durationSecs, momentCount, adventureType: trip.adventure_type ?? 'hiking', svgChart, viewUrl })
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',

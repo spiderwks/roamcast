@@ -15,6 +15,7 @@ export default function FollowerAuthPage() {
       supabase.functions.invoke('accept-invite', {
         body: { tripId, email },
       })
+      localStorage.setItem(`follower_${tripId}`, email)
     }
   }, [tripId, email])
 

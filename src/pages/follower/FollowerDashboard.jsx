@@ -59,10 +59,15 @@ export default function FollowerDashboard() {
   const [mapOpen, setMapOpen] = useState(false)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) navigate(`/follow/${tripId}`, { replace: true })
-      else loadData()
-    })
+    const params = new URLSearchParams(window.location.search)
+    const emailFromUrl = params.get('email')
+    if (emailFromUrl) localStorage.setItem(`follower_${tripId}`, emailFromUrl)
+    const stored = localStorage.getItem(`follower_${tripId}`)
+    if (!stored && !emailFromUrl) {
+      navigate(`/follow/${tripId}`, { replace: true })
+    } else {
+      loadData()
+    }
   }, [tripId])
 
   // Auto-refresh every 60s when there's a live session
