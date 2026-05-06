@@ -12,6 +12,7 @@ function formatDuration(secs: number): string {
   if (!secs) return null
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
+  if (h === 0 && m === 0) return null
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
@@ -21,16 +22,17 @@ function buildCatchUpEmail(p: {
   days: { day_number: number; date: string; distance_miles: number; duration_seconds: number }[]
   viewUrl: string
 }): string {
-  const dayRows = p.days.map(d => {
+  const dayRows = p.days.map((d, i) => {
     const dist = formatDistance(d.distance_miles)
     const dur = formatDuration(d.duration_seconds)
     const meta = [dist, dur].filter(Boolean).join(' · ')
     const dateStr = d.date
       ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : ''
+    const isLast = i === p.days.length - 1
     return `
       <tr>
-        <td style="padding:12px 0;border-bottom:1px solid #1e1e1e">
+        <td style="padding:12px 0;${isLast ? '' : 'border-bottom:1px solid #1e1e1e'}">
           <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
             <td>
               <span style="font-size:13px;font-weight:700;color:#fff">Day ${d.day_number}</span>
