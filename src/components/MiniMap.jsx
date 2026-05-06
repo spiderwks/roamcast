@@ -7,6 +7,17 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 const MOMENT_COLORS = { photo: '#BA7517', video: '#1D9E75', audio: '#7F77DD' }
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
 
+function createCalloutMarker(label, color) {
+  const el = document.createElement('div')
+  el.style.cssText = 'display:flex;flex-direction:column;align-items:center;pointer-events:none'
+  el.innerHTML = `
+    <div style="background:${color};color:#fff;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:0.6px;white-space:nowrap">${label}</div>
+    <div style="width:1.5px;height:10px;background:${color}"></div>
+    <div style="width:7px;height:7px;border-radius:50%;background:${color};border:2px solid #fff;flex-shrink:0"></div>
+  `
+  return el
+}
+
 export default function MiniMap({
   points = [],
   moments = [],
@@ -18,6 +29,7 @@ export default function MiniMap({
 }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const markersRef = useRef([])
   const onMomentClickRef = useRef(onMomentClick)
   const latestPointsRef = useRef(points)
   const latestMomentsRef = useRef(moments)
@@ -63,13 +75,45 @@ export default function MiniMap({
       map.addSource('path', { type: 'geojson', data: pathData })
       map.addLayer({ id: 'path-line', type: 'line', source: 'path', paint: { 'line-color': '#1D9E75', 'line-width': 2.5 } })
 
-      // Start/end markers added BEFORE moment dots so moments render on top
-      if (showStartStop) {
-        map.addSource('start-pos', { type: 'geojson', data: pts.length > 0 ? ptFeature(pts[0]) : EMPTY_FC })
-        map.addLayer({ id: 'start-outer', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 10, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-        map.addSource('end-pos', { type: 'geojson', data: pts.length > 1 ? ptFeature(pts[pts.length - 1]) : EMPTY_FC })
-        map.addLayer({ id: 'end-outer', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 10, 'circle-color': '#EF4444', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-      } else {
+      // Moment dots
+      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
+      map.addLayer({
+        id: 'moment-dots',
+        type: 'circle',
+        source: 'moments',
+        paint: {
+          'circle-radius': 6,
+          'circle-color': ['get', 'color'],
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#0f0f0f',
+        },
+      })
+
+      // Start/end HTML callout markers (render above GL canvas)
+      if (showStartStop && pts.length > 0) {
+        const startMarker = new mapboxgl.Marker({
+          element: createCalloutMarker('START', '#1D9E75'),
+          anchor: 'bottom',
+          offset: [0, 7],
+        })
+          .setLngLat([pts[0].lng, pts[0].lat])
+          .addTo(map)
+        markersRef.current.push(startMarker)
+
+        if (pts.length > 1) {
+          const endPt = pts[pts.length - 1]
+          const endMarker = new mapboxgl.Marker({
+            element: createCalloutMarker('END', '#EF4444'),
+            anchor: 'bottom',
+            offset: [0, 7],
+          })
+            .setLngLat([endPt.lng, endPt.lat])
+            .addTo(map)
+          markersRef.current.push(endMarker)
+        }
+      }
+
+      if (!showStartStop) {
         const last = pts.length > 0 ? pts[pts.length - 1] : null
         map.addSource('position', { type: 'geojson', data: last ? ptFeature(last) : EMPTY_FC })
         map.addLayer({
@@ -79,20 +123,6 @@ export default function MiniMap({
           paint: { 'circle-radius': 6, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
         })
       }
-
-      // Moment dots added LAST so they render on top of start/end markers
-      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
-      map.addLayer({
-        id: 'moment-dots',
-        type: 'circle',
-        source: 'moments',
-        paint: {
-          'circle-radius': 7,
-          'circle-color': ['get', 'color'],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#fff',
-        },
-      })
     })
 
     const handleClick = (e) => {
@@ -116,6 +146,8 @@ export default function MiniMap({
     return () => {
       container.removeEventListener('click', handleClick)
       container.removeEventListener('mousemove', handleMouseMove)
+      markersRef.current.forEach(m => m.remove())
+      markersRef.current = []
       if (mapRef.current) { mapRef.current.remove(); mapRef.current = null }
     }
   }, [])
@@ -127,10 +159,7 @@ export default function MiniMap({
       ? { type: 'Feature', geometry: routeGeometry }
       : buildLineGeoJSON(points)
     map.getSource('path')?.setData(pathData)
-    if (showStartStop) {
-      if (points.length > 0) map.getSource('start-pos')?.setData(ptFeature(points[0]))
-      if (points.length > 1) map.getSource('end-pos')?.setData(ptFeature(points[points.length - 1]))
-    } else if (points.length > 0) {
+    if (!showStartStop && points.length > 0) {
       const last = points[points.length - 1]
       map.getSource('position')?.setData(ptFeature(last))
       map.easeTo({ center: [last.lng, last.lat], duration: 800 })
