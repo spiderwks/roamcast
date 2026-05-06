@@ -91,16 +91,27 @@ export default function MiniMap({
 
       // Start/end HTML callout markers (render above GL canvas)
       if (showStartStop && pts.length > 0) {
-        const startMarker = new mapboxgl.Marker({
-          element: createCalloutMarker('START', '#1D9E75'),
-          anchor: 'bottom',
-          offset: [0, 7],
-        })
-          .setLngLat([pts[0].lng, pts[0].lat])
-          .addTo(map)
-        markersRef.current.push(startMarker)
+        const singlePoint = pts.length === 1 || (pts[0].lng === pts[pts.length - 1].lng && pts[0].lat === pts[pts.length - 1].lat)
 
-        if (pts.length > 1) {
+        if (singlePoint) {
+          const marker = new mapboxgl.Marker({
+            element: createCalloutMarker('START/END', '#F59E0B'),
+            anchor: 'bottom',
+            offset: [0, 7],
+          })
+            .setLngLat([pts[0].lng, pts[0].lat])
+            .addTo(map)
+          markersRef.current.push(marker)
+        } else {
+          const startMarker = new mapboxgl.Marker({
+            element: createCalloutMarker('START', '#1D9E75'),
+            anchor: 'bottom',
+            offset: [0, 7],
+          })
+            .setLngLat([pts[0].lng, pts[0].lat])
+            .addTo(map)
+          markersRef.current.push(startMarker)
+
           const endPt = pts[pts.length - 1]
           const endMarker = new mapboxgl.Marker({
             element: createCalloutMarker('END', '#EF4444'),
