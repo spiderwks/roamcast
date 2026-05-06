@@ -43,12 +43,16 @@ async function fetchSnappedRoute(pts) {
   if (pts.length < 2) return null
   try {
     const token = import.meta.env.VITE_MAPBOX_TOKEN
-    const coords = pts.slice(0, 25).map(p => `${p.lng},${p.lat}`).join(';')
+    // Map Matching API supports up to 100 coords — sample evenly if needed
+    const sampled = pts.length > 100
+      ? pts.filter((_, i) => i % Math.ceil(pts.length / 100) === 0)
+      : pts
+    const coords = sampled.map(p => `${p.lng},${p.lat}`).join(';')
     const res = await fetch(
-      `https://api.mapbox.com/directions/v5/mapbox/walking/${coords}?geometries=geojson&overview=full&access_token=${token}`
+      `https://api.mapbox.com/matching/v5/mapbox/walking/${coords}?geometries=geojson&overview=full&tidy=true&access_token=${token}`
     )
     const data = await res.json()
-    return data.routes?.[0]?.geometry ?? null
+    return data.matchings?.[0]?.geometry ?? null
   } catch {
     return null
   }
