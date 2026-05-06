@@ -62,7 +62,10 @@ export default function MiniMap({
       map.addSource('path', { type: 'geojson', data: pathData })
       map.addLayer({ id: 'path-line', type: 'line', source: 'path', paint: { 'line-color': '#1D9E75', 'line-width': 2.5 } })
 
-      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
+      const endpointCoords = showStartStop
+        ? [pts.length > 0 ? [pts[0].lng, pts[0].lat] : null, pts.length > 1 ? [pts[pts.length - 1].lng, pts[pts.length - 1].lat] : null].filter(Boolean)
+        : []
+      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms, endpointCoords) })
       map.addLayer({
         id: 'moment-dots',
         type: 'circle',
@@ -139,7 +142,10 @@ export default function MiniMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-    map.getSource('moments')?.setData(buildMomentsGeoJSON(moments))
+    const endpointCoords = showStartStop
+      ? [points.length > 0 ? [points[0].lng, points[0].lat] : null, points.length > 1 ? [points[points.length - 1].lng, points[points.length - 1].lat] : null].filter(Boolean)
+      : []
+    map.getSource('moments')?.setData(buildMomentsGeoJSON(moments, endpointCoords))
   }, [moments])
 
   return (
@@ -162,11 +168,12 @@ function buildLineGeoJSON(points) {
   }
 }
 
-function buildMomentsGeoJSON(moments) {
+function buildMomentsGeoJSON(moments, excludeCoords = []) {
   return {
     type: 'FeatureCollection',
     features: moments
       .filter(m => m.lat && m.lng)
+      .filter(m => !excludeCoords.some(([lng, lat]) => lng === m.lng && lat === m.lat))
       .map(m => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
