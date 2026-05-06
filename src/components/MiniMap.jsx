@@ -58,33 +58,17 @@ export default function MiniMap({
         map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 })
       }
 
+      // Route line
       const pathData = route ? { type: 'Feature', geometry: route } : buildLineGeoJSON(pts)
       map.addSource('path', { type: 'geojson', data: pathData })
       map.addLayer({ id: 'path-line', type: 'line', source: 'path', paint: { 'line-color': '#1D9E75', 'line-width': 2.5 } })
 
-      const endpointCoords = showStartStop
-        ? [pts.length > 0 ? [pts[0].lng, pts[0].lat] : null, pts.length > 1 ? [pts[pts.length - 1].lng, pts[pts.length - 1].lat] : null].filter(Boolean)
-        : []
-      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms, endpointCoords) })
-      map.addLayer({
-        id: 'moment-dots',
-        type: 'circle',
-        source: 'moments',
-        paint: {
-          'circle-radius': 6,
-          'circle-color': ['get', 'color'],
-          'circle-stroke-width': 1.5,
-          'circle-stroke-color': '#0f0f0f',
-        },
-      })
-
+      // Start/end markers added BEFORE moment dots so moments render on top
       if (showStartStop) {
         map.addSource('start-pos', { type: 'geojson', data: pts.length > 0 ? ptFeature(pts[0]) : EMPTY_FC })
-        map.addLayer({ id: 'start-outer', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 9, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-        map.addLayer({ id: 'start-inner', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 3.5, 'circle-color': '#fff' } })
+        map.addLayer({ id: 'start-outer', type: 'circle', source: 'start-pos', paint: { 'circle-radius': 10, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
         map.addSource('end-pos', { type: 'geojson', data: pts.length > 1 ? ptFeature(pts[pts.length - 1]) : EMPTY_FC })
-        map.addLayer({ id: 'end-outer', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 9, 'circle-color': '#EF4444', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
-        map.addLayer({ id: 'end-inner', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 3.5, 'circle-color': '#fff' } })
+        map.addLayer({ id: 'end-outer', type: 'circle', source: 'end-pos', paint: { 'circle-radius': 10, 'circle-color': '#EF4444', 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } })
       } else {
         const last = pts.length > 0 ? pts[pts.length - 1] : null
         map.addSource('position', { type: 'geojson', data: last ? ptFeature(last) : EMPTY_FC })
@@ -95,6 +79,20 @@ export default function MiniMap({
           paint: { 'circle-radius': 6, 'circle-color': '#1D9E75', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' },
         })
       }
+
+      // Moment dots added LAST so they render on top of start/end markers
+      map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
+      map.addLayer({
+        id: 'moment-dots',
+        type: 'circle',
+        source: 'moments',
+        paint: {
+          'circle-radius': 7,
+          'circle-color': ['get', 'color'],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#fff',
+        },
+      })
     })
 
     const handleClick = (e) => {
@@ -142,10 +140,7 @@ export default function MiniMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-    const endpointCoords = showStartStop
-      ? [points.length > 0 ? [points[0].lng, points[0].lat] : null, points.length > 1 ? [points[points.length - 1].lng, points[points.length - 1].lat] : null].filter(Boolean)
-      : []
-    map.getSource('moments')?.setData(buildMomentsGeoJSON(moments, endpointCoords))
+    map.getSource('moments')?.setData(buildMomentsGeoJSON(moments))
   }, [moments])
 
   return (
@@ -168,12 +163,11 @@ function buildLineGeoJSON(points) {
   }
 }
 
-function buildMomentsGeoJSON(moments, excludeCoords = []) {
+function buildMomentsGeoJSON(moments) {
   return {
     type: 'FeatureCollection',
     features: moments
       .filter(m => m.lat && m.lng)
-      .filter(m => !excludeCoords.some(([lng, lat]) => lng === m.lng && lat === m.lat))
       .map(m => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
