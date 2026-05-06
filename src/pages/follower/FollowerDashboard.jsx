@@ -328,7 +328,7 @@ export default function FollowerDashboard() {
               showStartStop
               onMomentClick={id => {
                 const m = moments.find(m => m.id === id)
-                if (m) { setMapOpen(false); setSelectedMoment(m) }
+                if (m) setSelectedMoment(m)
               }}
             />
           </div>
@@ -337,7 +337,7 @@ export default function FollowerDashboard() {
 
       {/* Moment detail modal */}
       {selectedMoment && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col justify-end">
           <div className="bg-surface-deep rounded-t-2xl overflow-hidden">
             {selectedMoment.type === 'photo' && selectedMediaUrl && (
               <img src={selectedMediaUrl} alt={selectedMoment.title} className="w-full object-cover max-h-[60vh]" />
