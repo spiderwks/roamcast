@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -6,6 +6,12 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN
 
 const MOMENT_COLORS = { photo: '#BA7517', video: '#1D9E75', audio: '#7F77DD' }
 const EMPTY_FC = { type: 'FeatureCollection', features: [] }
+
+const MAP_STYLES = [
+  { id: 'dark',      label: 'Dark',    url: 'mapbox://styles/mapbox/dark-v11' },
+  { id: 'satellite', label: 'Sat',     url: 'mapbox://styles/mapbox/satellite-streets-v12' },
+  { id: 'outdoors',  label: 'Trail',   url: 'mapbox://styles/mapbox/outdoors-v12' },
+]
 
 function createCalloutMarker(label, color) {
   const el = document.createElement('div')
@@ -25,6 +31,7 @@ export default function MiniMap({
   interactive = false,
   onMomentClick,
   showStartStop = false,
+  showStyleSwitcher = false,
 }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
@@ -32,6 +39,9 @@ export default function MiniMap({
   const onMomentClickRef = useRef(onMomentClick)
   const latestPointsRef = useRef(points)
   const latestMomentsRef = useRef(moments)
+  const initialFitDoneRef = useRef(false)
+  const [activeStyle, setActiveStyle] = useState('dark')
+
   useEffect(() => { onMomentClickRef.current = onMomentClick }, [onMomentClick])
   useEffect(() => { latestPointsRef.current = points }, [points])
   useEffect(() => { latestMomentsRef.current = moments }, [moments])
@@ -50,19 +60,24 @@ export default function MiniMap({
     })
     mapRef.current = map
 
-    map.on('load', () => {
+    // style.load fires on initial load AND after every setStyle() call.
+    // Re-add GL sources/layers each time; HTML markers survive style changes automatically.
+    map.on('style.load', () => {
       const pts = latestPointsRef.current
       const moms = latestMomentsRef.current
 
-      if (pts.length === 1) {
-        map.setCenter([pts[0].lng, pts[0].lat])
-        map.setZoom(14)
-      } else if (pts.length > 1) {
-        const bounds = pts.reduce(
-          (b, p) => b.extend([p.lng, p.lat]),
-          new mapboxgl.LngLatBounds([pts[0].lng, pts[0].lat], [pts[0].lng, pts[0].lat])
-        )
-        map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 })
+      if (!initialFitDoneRef.current) {
+        if (pts.length === 1) {
+          map.setCenter([pts[0].lng, pts[0].lat])
+          map.setZoom(14)
+        } else if (pts.length > 1) {
+          const bounds = pts.reduce(
+            (b, p) => b.extend([p.lng, p.lat]),
+            new mapboxgl.LngLatBounds([pts[0].lng, pts[0].lat], [pts[0].lng, pts[0].lat])
+          )
+          map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 })
+        }
+        initialFitDoneRef.current = true
       }
 
       // Moment dots
@@ -79,38 +94,24 @@ export default function MiniMap({
         },
       })
 
-      // Start/end HTML callout markers (render above GL canvas)
-      if (showStartStop && pts.length > 0) {
+      // HTML callout markers survive style changes — only create them once
+      if (showStartStop && pts.length > 0 && markersRef.current.length === 0) {
         const singlePoint = pts.length === 1 || (pts[0].lng === pts[pts.length - 1].lng && pts[0].lat === pts[pts.length - 1].lat)
-
         if (singlePoint) {
-          const marker = new mapboxgl.Marker({
-            element: createCalloutMarker('START/END', '#F59E0B'),
-            anchor: 'bottom',
-            offset: [0, 7],
-          })
-            .setLngLat([pts[0].lng, pts[0].lat])
-            .addTo(map)
-          markersRef.current.push(marker)
+          markersRef.current.push(
+            new mapboxgl.Marker({ element: createCalloutMarker('START/END', '#F59E0B'), anchor: 'bottom', offset: [0, 7] })
+              .setLngLat([pts[0].lng, pts[0].lat]).addTo(map)
+          )
         } else {
-          const startMarker = new mapboxgl.Marker({
-            element: createCalloutMarker('START', '#1D9E75'),
-            anchor: 'bottom',
-            offset: [0, 7],
-          })
-            .setLngLat([pts[0].lng, pts[0].lat])
-            .addTo(map)
-          markersRef.current.push(startMarker)
-
+          markersRef.current.push(
+            new mapboxgl.Marker({ element: createCalloutMarker('START', '#1D9E75'), anchor: 'bottom', offset: [0, 7] })
+              .setLngLat([pts[0].lng, pts[0].lat]).addTo(map)
+          )
           const endPt = pts[pts.length - 1]
-          const endMarker = new mapboxgl.Marker({
-            element: createCalloutMarker('END', '#EF4444'),
-            anchor: 'bottom',
-            offset: [0, 7],
-          })
-            .setLngLat([endPt.lng, endPt.lat])
-            .addTo(map)
-          markersRef.current.push(endMarker)
+          markersRef.current.push(
+            new mapboxgl.Marker({ element: createCalloutMarker('END', '#EF4444'), anchor: 'bottom', offset: [0, 7] })
+              .setLngLat([endPt.lng, endPt.lat]).addTo(map)
+          )
         }
       }
 
@@ -169,12 +170,40 @@ export default function MiniMap({
     map.getSource('moments')?.setData(buildMomentsGeoJSON(moments))
   }, [moments])
 
+  function switchStyle(styleId) {
+    const map = mapRef.current
+    if (!map || styleId === activeStyle) return
+    const style = MAP_STYLES.find(s => s.id === styleId)
+    if (style) {
+      setActiveStyle(styleId)
+      map.setStyle(style.url)
+    }
+  }
+
   return (
     <div
-      ref={containerRef}
-      className={`w-full rounded-lg overflow-hidden border border-[#1e2e26] ${className}`}
+      className={`relative w-full rounded-lg overflow-hidden border border-[#1e2e26] ${className}`}
       style={{ minHeight: 110, background: '#141a17' }}
-    />
+    >
+      <div ref={containerRef} className="absolute inset-0" />
+      {showStyleSwitcher && (
+        <div className="absolute top-2 left-2 z-10 flex gap-1">
+          {MAP_STYLES.map(s => (
+            <button
+              key={s.id}
+              onClick={() => switchStyle(s.id)}
+              className={`px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
+                activeStyle === s.id
+                  ? 'bg-white text-black border-white'
+                  : 'bg-black/60 text-white/80 border-white/20'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 

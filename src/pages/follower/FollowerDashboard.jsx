@@ -331,6 +331,7 @@ export default function FollowerDashboard() {
               className="h-full rounded-none"
               interactive
               showStartStop
+              showStyleSwitcher
               onMomentClick={id => {
                 const m = moments.find(m => m.id === id)
                 if (m) setSelectedMoment(m)

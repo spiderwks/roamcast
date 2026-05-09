@@ -177,7 +177,6 @@ export default function DayReviewPage() {
             moments={moments}
             className="h-[160px]"
             onMomentClick={handleMomentDotClick}
-
             showStartStop
           />
           <button
@@ -265,8 +264,8 @@ export default function DayReviewPage() {
               className="h-full"
               interactive
               onMomentClick={handleMomentDotClick}
-  
               showStartStop
+              showStyleSwitcher
             />
           </div>
         </div>
