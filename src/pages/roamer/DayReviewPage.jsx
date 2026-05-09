@@ -39,24 +39,6 @@ async function getSignedUrl(path) {
   return data?.signedUrl ?? null
 }
 
-async function fetchSnappedRoute(pts) {
-  if (pts.length < 2) return null
-  try {
-    const token = import.meta.env.VITE_MAPBOX_TOKEN
-    // Map Matching API supports up to 100 coords — sample evenly if needed
-    const sampled = pts.length > 100
-      ? pts.filter((_, i) => i % Math.ceil(pts.length / 100) === 0)
-      : pts
-    const coords = sampled.map(p => `${p.lng},${p.lat}`).join(';')
-    const res = await fetch(
-      `https://api.mapbox.com/matching/v5/mapbox/walking/${coords}?geometries=geojson&overview=full&tidy=true&access_token=${token}`
-    )
-    const data = await res.json()
-    return data.matchings?.[0]?.geometry ?? null
-  } catch {
-    return null
-  }
-}
 
 export default function DayReviewPage() {
   const { tripId, dayId } = useParams()
@@ -65,7 +47,6 @@ export default function DayReviewPage() {
   const [day, setDay] = useState(null)
   const [moments, setMoments] = useState([])
   const [pathPoints, setPathPoints] = useState([])
-  const [snappedRoute, setSnappedRoute] = useState(null)
   const [loading, setLoading] = useState(true)
   const [selectedMoment, setSelectedMoment] = useState(null)
   const [mapOpen, setMapOpen] = useState(false)
@@ -110,9 +91,6 @@ export default function DayReviewPage() {
       : moms.filter(m => m.lat && m.lng).map(m => ({ lat: m.lat, lng: m.lng }))
     setPathPoints(pts)
     setLoading(false)
-
-    const route = await fetchSnappedRoute(pts)
-    if (route) setSnappedRoute(route)
   }
 
   function handleMomentDotClick(momentId) {
@@ -190,20 +168,6 @@ export default function DayReviewPage() {
         ))}
       </div>
 
-      {/* Map — legend */}
-      <div className="px-4 mb-1 flex items-center gap-3">
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-brand-teal border-2 border-white" />
-          <span className="text-[9px] text-text-muted">Start</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white" />
-          <span className="text-[9px] text-text-muted">End</span>
-        </div>
-        {!snappedRoute && pathPoints.length > 1 && (
-          <span className="text-[9px] text-text-disabled ml-auto">Snapping to roads…</span>
-        )}
-      </div>
 
       {/* Map */}
       <div className="px-4 mb-4">
@@ -213,7 +177,7 @@ export default function DayReviewPage() {
             moments={moments}
             className="h-[160px]"
             onMomentClick={handleMomentDotClick}
-            routeGeometry={snappedRoute}
+
             showStartStop
           />
           <button
@@ -294,16 +258,6 @@ export default function DayReviewPage() {
             </button>
             <h2 className="text-[15px] font-bold text-white flex-1">Day {day?.day_number} · GPS Track</h2>
           </div>
-          <div className="flex items-center gap-3 px-4 pb-2 flex-shrink-0">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-brand-teal border-2 border-white" />
-              <span className="text-[9px] text-text-muted">Start</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500 border-2 border-white" />
-              <span className="text-[9px] text-text-muted">End</span>
-            </div>
-          </div>
           <div className="flex-1 px-4 pb-6">
             <MiniMap
               points={pathPoints}
@@ -311,7 +265,7 @@ export default function DayReviewPage() {
               className="h-full"
               interactive
               onMomentClick={handleMomentDotClick}
-              routeGeometry={snappedRoute}
+  
               showStartStop
             />
           </div>

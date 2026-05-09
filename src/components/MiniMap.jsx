@@ -24,7 +24,6 @@ export default function MiniMap({
   className = '',
   interactive = false,
   onMomentClick,
-  routeGeometry = null,
   showStartStop = false,
 }) {
   const containerRef = useRef(null)
@@ -33,12 +32,9 @@ export default function MiniMap({
   const onMomentClickRef = useRef(onMomentClick)
   const latestPointsRef = useRef(points)
   const latestMomentsRef = useRef(moments)
-  const latestRouteRef = useRef(routeGeometry)
-
   useEffect(() => { onMomentClickRef.current = onMomentClick }, [onMomentClick])
   useEffect(() => { latestPointsRef.current = points }, [points])
   useEffect(() => { latestMomentsRef.current = moments }, [moments])
-  useEffect(() => { latestRouteRef.current = routeGeometry }, [routeGeometry])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -57,7 +53,6 @@ export default function MiniMap({
     map.on('load', () => {
       const pts = latestPointsRef.current
       const moms = latestMomentsRef.current
-      const route = latestRouteRef.current
 
       if (pts.length === 1) {
         map.setCenter([pts[0].lng, pts[0].lat])
@@ -69,11 +64,6 @@ export default function MiniMap({
         )
         map.fitBounds(bounds, { padding: 40, maxZoom: 16, duration: 0 })
       }
-
-      // Route line
-      const pathData = route ? { type: 'Feature', geometry: route } : buildLineGeoJSON(pts)
-      map.addSource('path', { type: 'geojson', data: pathData })
-      map.addLayer({ id: 'path-line', type: 'line', source: 'path', paint: { 'line-color': '#1D9E75', 'line-width': 2.5 } })
 
       // Moment dots
       map.addSource('moments', { type: 'geojson', data: buildMomentsGeoJSON(moms) })
@@ -166,16 +156,12 @@ export default function MiniMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
-    const pathData = routeGeometry
-      ? { type: 'Feature', geometry: routeGeometry }
-      : buildLineGeoJSON(points)
-    map.getSource('path')?.setData(pathData)
     if (!showStartStop && points.length > 0) {
       const last = points[points.length - 1]
       map.getSource('position')?.setData(ptFeature(last))
       map.easeTo({ center: [last.lng, last.lat], duration: 800 })
     }
-  }, [points, routeGeometry])
+  }, [points])
 
   useEffect(() => {
     const map = mapRef.current
@@ -194,13 +180,6 @@ export default function MiniMap({
 
 function ptFeature(p) {
   return { type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }
-}
-
-function buildLineGeoJSON(points) {
-  return {
-    type: 'Feature',
-    geometry: { type: 'LineString', coordinates: points.map(p => [p.lng, p.lat]) },
-  }
 }
 
 function buildMomentsGeoJSON(moments) {
